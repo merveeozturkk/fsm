@@ -162,7 +162,10 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<'jobs' | 'team' | 'cash' | 'task' | 'history' | 'profile'>('jobs');
 
-  // Bildirim ve Toast Durumu
+  // Filtreler (Apple Segmented Control)
+  const [jobFilter, setJobFilter] = useState<'all' | 'active' | 'completed'>('all');
+
+  // Bildirim Toast
   const [inAppToast, setInAppToast] = useState<{ title: string; message: string } | null>(null);
 
   // Fiyat & Parça Kataloğu
@@ -175,11 +178,11 @@ export default function App() {
   const [newItemPrice, setNewItemPrice] = useState('');
   const [newItemCost, setNewItemCost] = useState('');
 
-  // Usta için Katalogdan Parça Seçme Modalı
+  // Usta Parça Seçme Modalı
   const [isPickPartModalOpen, setIsPickPartModalOpen] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState('');
 
-  // 14 Günlük Deneme ve Abonelik / Ödeme Durumu
+  // Abonelik & PayTR
   const [subscriptionTier, setSubscriptionTier] = useState<'trial' | 'standard' | 'pro' | 'yearly'>('trial');
   const [trialDaysLeft, setTrialDaysLeft] = useState(12);
   const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
@@ -194,7 +197,6 @@ export default function App() {
   // STORAGE & BULUT BAŞLATMA
   useEffect(() => {
     async function initStorage() {
-      // Bildirim izinlerini iste
       await requestNotificationPermissions();
 
       const savedUser = await SyncService.loadLocal('@servisjet_current_user');
@@ -224,7 +226,7 @@ export default function App() {
     initStorage();
   }, []);
 
-  // GERÇEK ZAMANLI (REALTIME) BULUT DİNLİYİCİSİ
+  // GERÇEK ZAMANLI REALTIME DİNLEYİCİ
   useEffect(() => {
     if (!currentUser?.companyId || !supabase) return;
 
@@ -245,11 +247,10 @@ export default function App() {
         supabase.removeChannel(channel);
       };
     } catch (e) {
-      // Çevrimdışıysa devam et
+      // offline
     }
   }, [currentUser?.companyId]);
 
-  // Yerel hafızaya kaydetmeler
   useEffect(() => { SyncService.saveLocal('@servisjet_users', users); }, [users]);
   useEffect(() => { SyncService.saveLocal('@servisjet_jobs', jobs); }, [jobs]);
   useEffect(() => { SyncService.saveLocal('@servisjet_techs', technicians); }, [technicians]);
@@ -261,7 +262,7 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Auth State
+  // Auth States
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
   const [regRole, setRegRole] = useState<'owner' | 'technician'>('owner');
   const [loginPhone, setLoginPhone] = useState('');
@@ -304,7 +305,7 @@ export default function App() {
   const [photoOld, setPhotoOld] = useState<string | null>(null);
   const [photoNew, setPhotoNew] = useState<string | null>(null);
 
-  // Telefon Girilince Eski Müşteri Hafızası Kontrolü
+  // Telefon girilince müşteri hafızası
   const handlePhoneChange = (text: string) => {
     setCPhone(text);
     const clean = text.trim().replace(/[^0-9]/g, '');
@@ -327,7 +328,7 @@ export default function App() {
     setCAddress(matchedOldCustomer.address);
     setCDevice(matchedOldCustomer.deviceType);
     setMatchedOldCustomer(null);
-    Alert.alert('Bilgiler Dolduruldu', `${matchedOldCustomer.customerName} adres ve cihaz bilgileri otomatik yüklendi.`);
+    Alert.alert('Hafıza Yüklendi', `${matchedOldCustomer.customerName} adres ve cihaz bilgileri otomatik dolduruldu.`);
   };
 
   // Fotoğraf Çekme
@@ -337,23 +338,18 @@ export default function App() {
       Alert.alert('İzin Gerekli', 'Kamera izni verilmeden fotoğraf çekilemez.');
       return;
     }
-
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.6
     });
-
     if (!result.canceled && result.assets && result.assets.length > 0) {
-      if (type === 'old') {
-        setPhotoOld(result.assets[0].uri);
-      } else {
-        setPhotoNew(result.assets[0].uri);
-      }
+      if (type === 'old') setPhotoOld(result.assets[0].uri);
+      else setPhotoNew(result.assets[0].uri);
     }
   };
 
-  // WhatsApp Servis Fişi
+  // WhatsApp Dijital Servis Fişi
   const handleSendWhatsAppReceipt = (job: Job) => {
     const cleanPhone = job.customerPhone.replace(/[^0-9]/g, '').slice(-10);
     const dateStr = new Date().toLocaleDateString('tr-TR');
@@ -386,14 +382,14 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
     const msg = 
 `Sayın ${job.customerName} merhaba, ${currentUser?.companyName} servisinden yazıyoruz.
 ${job.deviceType} cihazınızın periyodik bakımının üzerinden 1 yıl geçti.
-Verimli ısınma ve doğalgaz tasarrufu için yıllık bakım zamanınız gelmiştir.
+Verimli ısınma ve tasarruf için yıllık bakım zamanınız gelmiştir.
 
 Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
 
     Linking.openURL(`https://wa.me/90${cleanPhone}?text=${encodeURIComponent(msg)}`);
   };
 
-  // Giriş / Kayıt
+  // Giriş
   const handleLogin = async () => {
     const cleanPhone = loginPhone.trim().replace(/[^0-9]/g, '');
     const cleanPass = loginPass.trim();
@@ -413,6 +409,7 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
     }
   };
 
+  // Kayıt
   const handleRegister = async () => {
     const cleanPhone = regPhone.trim().replace(/[^0-9]/g, '');
     const cleanPass = regPass.trim();
@@ -486,6 +483,7 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
     }
   };
 
+  // Usta Ekleme
   const handleAddTech = () => {
     if (!currentUser || currentUser.role !== 'owner') return;
     if (!newTechName.trim() || !newTechPhone.trim()) {
@@ -520,14 +518,14 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
     setNewTechName('');
     setNewTechPhone('');
     setNewTechPlate('');
-    Alert.alert('Usta Eklendi', `${newTechObj.name} kaydedildi. Giriş Şifresi: ${newTechPass}`);
+    Alert.alert('Usta Eklendi', `${newTechObj.name} kaydedildi.`);
   };
 
-  // Yeni İş Oluşturma (Push Bildirimi Tetiklenir!)
+  // Yeni İş Açma
   const handleCreateJob = async () => {
     if (!currentUser) return;
     if (!cName.trim() || !cPhone.trim() || !cFault.trim()) {
-      Alert.alert('Eksik Bilgi', 'Müşteri adı, telefon ve arıza açıklaması girilmelidir.');
+      Alert.alert('Eksik Bilgi', 'Müşteri adı, telefon ve arıza detayını giriniz.');
       return;
     }
     const myTechs = technicians.filter(t => t.companyId === currentUser.companyId);
@@ -560,17 +558,13 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
     setCAddress('');
     setCFault('');
 
-    // ANLIK PUSH BİLDİRİMİ TETİKLE!
     await triggerJobNotification(assignedTechName, newJob.customerName, newJob.deviceType, newJob.district);
 
-    // Uygulama içi Toast göster
     setInAppToast({
-      title: '🔔 Bildirim Gönderildi!',
-      message: `${assignedTechName} ustaya ${newJob.customerName} (${newJob.district}) işi iletildi.`
+      title: 'İş Oluşturuldu 🔔',
+      message: `${newJob.customerName} (${newJob.district}) ${assignedTechName} ustaya atandı.`
     });
-    setTimeout(() => setInAppToast(null), 4000);
-
-    Alert.alert('İş Kaydedildi!', `${newJob.jobCode} nolu servis kaydı oluşturuldu ve ${assignedTechName} ustaya anlık bildirim fırlatıldı.`);
+    setTimeout(() => setInAppToast(null), 3500);
   };
 
   // Tahsilat Kaydetme
@@ -611,24 +605,38 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
       const jToShare = updatedJob;
       setTimeout(() => {
         Alert.alert(
-          'İş Başarıyla Tamamlandı!',
-          `Toplam ${tot} ₺ (${payMethod.toUpperCase()}) tahsil edildi.\nMüşteriye 1 Yıl Garantili Dijital Fişi WhatsApp ile göndermek ister misiniz?`,
+          'İş Tamamlandı! 🎉',
+          `Toplam ${tot} ₺ (${payMethod.toUpperCase()}) tahsil edildi.\nMüşteriye garantili dijital servis fişi göndermek ister misiniz?`,
           [
-            { text: 'Daha Sonra', style: 'cancel' },
+            { text: 'Kapat', style: 'cancel' },
             {
               text: '💬 WhatsApp Fişi Gönder',
               onPress: () => handleSendWhatsAppReceipt(jToShare)
             }
           ]
         );
-      }, 400);
+      }, 350);
     }
   };
 
-  // KATALOG YÖNETİMİ
+  // Katalogdan Parça Seçme
+  const handleSelectCatalogItemForJob = (item: CatalogItem) => {
+    const currentNotes = notesInput.trim();
+    const updatedNotes = currentNotes ? `${currentNotes}, ${item.name}` : item.name;
+    setNotesInput(updatedNotes);
+
+    const currentParts = parseFloat(partsInput) || 0;
+    const newParts = currentParts + item.price;
+    setPartsInput(newParts.toString());
+
+    setIsPickPartModalOpen(false);
+    Alert.alert('Parça Eklendi', `${item.name} (+${item.price} ₺) eklendi.`);
+  };
+
+  // Katalog Ekleme
   const handleAddCatalogItem = async () => {
     if (!newItemName.trim() || !newItemPrice.trim()) {
-      Alert.alert('Eksik Bilgi', 'Parça/hizmet adı ve fiyatı zorunludur.');
+      Alert.alert('Eksik Bilgi', 'Parça adı ve satış fiyatı girilmelidir.');
       return;
     }
     const item: CatalogItem = {
@@ -647,7 +655,6 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
     setNewItemName('');
     setNewItemPrice('');
     setNewItemCost('');
-    Alert.alert('Kataloğa Eklendi', `${item.name} (${item.price} ₺) listenize kaydedildi.`);
   };
 
   const handleDeleteCatalogItem = async (id: string) => {
@@ -658,89 +665,64 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
     }
   };
 
-  // USTANIN KATALOGDAN PARÇA SEÇMESİ
-  const handleSelectCatalogItemForJob = (item: CatalogItem) => {
-    // Parça adını nota ekle
-    const currentNotes = notesInput.trim();
-    const updatedNotes = currentNotes ? `${currentNotes}, ${item.name}` : item.name;
-    setNotesInput(updatedNotes);
-
-    // Parça ücretini topla
-    const currentParts = parseFloat(partsInput) || 0;
-    const newParts = currentParts + item.price;
-    setPartsInput(newParts.toString());
-
-    setIsPickPartModalOpen(false);
-    Alert.alert('Parça Eklendi! 📦', `${item.name} (+${item.price} ₺) servis fişine eklendi.`);
-  };
-
-  // ABONELİK / ÖDEME İŞLEMİ (PAYTR/İYZİCO SİMÜLASYONU)
+  // PayTR Ödeme Simülasyonu
   const handleProcessPayment = () => {
     if (!cardHolder.trim() || !cardNumber.trim() || !cardExp.trim() || !cardCvv.trim()) {
-      Alert.alert('Eksik Kart Bilgisi', 'Lütfen tüm kart alanlarını doldurunuz.');
+      Alert.alert('Eksik Bilgi', 'Lütfen tüm kart alanlarını doldurunuz.');
       return;
     }
     setIsPaying(true);
-
-    // 3D Secure Doğrulama Simülasyonu
     setTimeout(async () => {
       setIsPaying(false);
       setSubscriptionTier(selectedPlan);
       await SyncService.saveLocal('@servisjet_sub_tier', selectedPlan);
       setSubModalStep('success');
-    }, 2000);
+    }, 1800);
   };
 
-  // ÇIKIŞ YAP
+  // Çıkış
   const handleLogout = () => {
-    Alert.alert('Çıkış Yap', 'Hesabınızdan çıkış yapmak istediğinize emin misiniz?', [
-      { text: 'İptal', style: 'cancel' },
-      {
-        text: 'Çıkış Yap',
-        style: 'destructive',
-        onPress: () => {
-          setCurrentUser(null);
-          setAuthView('login');
-        }
-      }
+    Alert.alert('Çıkış Yap', 'Hesabınızdan çıkış yapmak istiyor musunuz?', [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'Çıkış Yap', style: 'destructive', onPress: () => { setCurrentUser(null); setAuthView('login'); } }
     ]);
   };
 
-  // GİRİŞ / KAYIT EKRANI
+  // ===================== AUTH EKRANI =====================
   if (!currentUser) {
     return (
       <SafeAreaView style={styles.authContainer}>
         <StatusBar style="dark" />
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={styles.authScroll}>
+          <ScrollView contentContainerStyle={styles.authScroll} showsVerticalScrollIndicator={false}>
             <View style={styles.authHeader}>
-              <View style={styles.logoBadge}>
-                <Ionicons name="construct" size={28} color="#fff" />
+              <View style={styles.appleLogoWrap}>
+                <Ionicons name="flame" size={32} color="#0284c7" />
               </View>
-              <Text style={styles.authBrand}>Servis<Text style={{ color: '#0284c7' }}>Jet</Text></Text>
-              <Text style={styles.authSub}>Kombi, Klima & Teknik Servis Yönetim Sistemi</Text>
+              <Text style={styles.appleBrand}>Servis<Text style={{ color: '#0284c7' }}>Jet</Text></Text>
+              <Text style={styles.appleSub}>Teknik Servis & Saha Yönetimi</Text>
             </View>
 
-            <View style={styles.toggleRow}>
+            <View style={styles.segmentedControl}>
               <TouchableOpacity
-                style={[styles.toggleBtn, authView === 'login' && styles.toggleBtnActive]}
+                style={[styles.segmentBtn, authView === 'login' && styles.segmentBtnActive]}
                 onPress={() => setAuthView('login')}
               >
-                <Text style={[styles.toggleText, authView === 'login' && styles.toggleTextActive]}>Giriş Yap</Text>
+                <Text style={[styles.segmentText, authView === 'login' && styles.segmentTextActive]}>Giriş Yap</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.toggleBtn, authView === 'register' && styles.toggleBtnActive]}
+                style={[styles.segmentBtn, authView === 'register' && styles.segmentBtnActive]}
                 onPress={() => setAuthView('register')}
               >
-                <Text style={[styles.toggleText, authView === 'register' && styles.toggleTextActive]}>Hesap Aç</Text>
+                <Text style={[styles.segmentText, authView === 'register' && styles.segmentTextActive]}>Kayıt Ol</Text>
               </TouchableOpacity>
             </View>
 
             {authView === 'login' ? (
-              <View style={styles.formCard}>
-                <Text style={styles.inputLabel}>Telefon Numaranız</Text>
+              <View style={styles.appleCard}>
+                <Text style={styles.inputLabel}>Telefon Numarası</Text>
                 <TextInput
-                  style={styles.input}
+                  style={styles.iosInput}
                   placeholder="0532 000 00 00"
                   placeholderTextColor="#94a3b8"
                   keyboardType="phone-pad"
@@ -748,9 +730,9 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
                   onChangeText={setLoginPhone}
                 />
 
-                <Text style={styles.inputLabel}>Giriş Şifresi</Text>
+                <Text style={styles.inputLabel}>Şifre</Text>
                 <TextInput
-                  style={styles.input}
+                  style={styles.iosInput}
                   placeholder="••••"
                   placeholderTextColor="#94a3b8"
                   secureTextEntry
@@ -758,106 +740,66 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
                   onChangeText={setLoginPass}
                 />
 
-                <TouchableOpacity style={styles.primaryBtn} onPress={handleLogin}>
-                  <Text style={styles.primaryBtnText}>Uygulamaya Gir</Text>
+                <TouchableOpacity style={styles.applePrimaryBtn} onPress={handleLogin}>
+                  <Text style={styles.applePrimaryBtnText}>Giriş Yap</Text>
                   <Ionicons name="arrow-forward" size={18} color="#fff" />
                 </TouchableOpacity>
 
-                <View style={styles.demoBox}>
-                  <Text style={styles.demoTitle}>Hızlı Test Girişleri (Şifre: 1234):</Text>
+                <View style={styles.iosDemoCard}>
+                  <Text style={styles.iosDemoTitle}>Hızlı Demo Girişleri (Şifre: 1234):</Text>
                   <TouchableOpacity onPress={() => { setLoginPhone('05321002030'); setLoginPass('1234'); }}>
-                    <Text style={styles.demoLink}>👔 Patron: 0532 100 20 30</Text>
+                    <Text style={styles.iosDemoRow}>👔 Patron: 0532 100 20 30</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => { setLoginPhone('05325551021'); setLoginPass('1234'); }}>
-                    <Text style={styles.demoLink}>🔧 Usta: 0532 555 10 21</Text>
+                    <Text style={styles.iosDemoRow}>🔧 Usta: 0532 555 10 21</Text>
                   </TouchableOpacity>
                 </View>
               </View>
             ) : (
-              <View style={styles.formCard}>
-                <Text style={styles.inputLabel}>Rolünüzü Seçin</Text>
-                <View style={styles.roleRow}>
+              <View style={styles.appleCard}>
+                <Text style={styles.inputLabel}>Hesap Türü</Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
                   <TouchableOpacity
-                    style={[styles.roleBtn, regRole === 'owner' && styles.roleBtnActive]}
+                    style={[styles.roleSelectPill, regRole === 'owner' && styles.roleSelectPillActive]}
                     onPress={() => setRegRole('owner')}
                   >
-                    <Ionicons name="briefcase-outline" size={18} color={regRole === 'owner' ? '#0284c7' : '#64748b'} />
-                    <Text style={[styles.roleText, regRole === 'owner' && styles.roleTextActive]}>Patron (Firma Sahibi)</Text>
+                    <Ionicons name="briefcase" size={16} color={regRole === 'owner' ? '#0284c7' : '#64748b'} />
+                    <Text style={[styles.roleSelectText, regRole === 'owner' && styles.roleSelectTextActive]}>Firma Sahibi</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.roleBtn, regRole === 'technician' && styles.roleBtnActive]}
+                    style={[styles.roleSelectPill, regRole === 'technician' && styles.roleSelectPillActive]}
                     onPress={() => setRegRole('technician')}
                   >
-                    <Ionicons name="construct-outline" size={18} color={regRole === 'technician' ? '#0284c7' : '#64748b'} />
-                    <Text style={[styles.roleText, regRole === 'technician' && styles.roleTextActive]}>Teknisyen (Saha Ustası)</Text>
+                    <Ionicons name="construct" size={16} color={regRole === 'technician' ? '#0284c7' : '#64748b'} />
+                    <Text style={[styles.roleSelectText, regRole === 'technician' && styles.roleSelectTextActive]}>Saha Ustası</Text>
                   </TouchableOpacity>
                 </View>
 
-                <Text style={styles.inputLabel}>Adınız Soyadınız</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ahmet Usta"
-                  placeholderTextColor="#94a3b8"
-                  value={regName}
-                  onChangeText={setRegName}
-                />
+                <Text style={styles.inputLabel}>Ad Soyad</Text>
+                <TextInput style={styles.iosInput} placeholder="Ahmet Yılmaz" placeholderTextColor="#94a3b8" value={regName} onChangeText={setRegName} />
 
-                <Text style={styles.inputLabel}>Telefon Numaranız</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="05XX XXX XX XX"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="phone-pad"
-                  value={regPhone}
-                  onChangeText={setRegPhone}
-                />
+                <Text style={styles.inputLabel}>Telefon</Text>
+                <TextInput style={styles.iosInput} placeholder="05XX XXX XX XX" placeholderTextColor="#94a3b8" keyboardType="phone-pad" value={regPhone} onChangeText={setRegPhone} />
 
-                <Text style={styles.inputLabel}>Şifreniz</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="4 Haneli Şifre"
-                  placeholderTextColor="#94a3b8"
-                  secureTextEntry
-                  value={regPass}
-                  onChangeText={setRegPass}
-                />
+                <Text style={styles.inputLabel}>Giriş Şifresi</Text>
+                <TextInput style={styles.iosInput} placeholder="••••" placeholderTextColor="#94a3b8" secureTextEntry value={regPass} onChangeText={setRegPass} />
 
                 {regRole === 'owner' ? (
                   <>
-                    <Text style={styles.inputLabel}>Firma / Servis Adınız</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Örn: Ege Kombi & Klima"
-                      placeholderTextColor="#94a3b8"
-                      value={regCompany}
-                      onChangeText={setRegCompany}
-                    />
+                    <Text style={styles.inputLabel}>Firma Adı</Text>
+                    <TextInput style={styles.iosInput} placeholder="Örn: Ege Kombi Servisi" placeholderTextColor="#94a3b8" value={regCompany} onChangeText={setRegCompany} />
                   </>
                 ) : (
                   <>
-                    <Text style={styles.inputLabel}>Patronun Ekip Davet Kodu</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Örn: EGE34"
-                      placeholderTextColor="#94a3b8"
-                      autoCapitalize="characters"
-                      value={regInviteCode}
-                      onChangeText={setRegInviteCode}
-                    />
-                    <Text style={styles.inputLabel}>Servis Aracı Plakası (Opsiyonel)</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="34 TB 4102"
-                      placeholderTextColor="#94a3b8"
-                      value={regPlate}
-                      onChangeText={setRegPlate}
-                    />
+                    <Text style={styles.inputLabel}>Ekip Davet Kodu</Text>
+                    <TextInput style={styles.iosInput} placeholder="EGE34" placeholderTextColor="#94a3b8" autoCapitalize="characters" value={regInviteCode} onChangeText={setRegInviteCode} />
+                    <Text style={styles.inputLabel}>Servis Aracı Plakası</Text>
+                    <TextInput style={styles.iosInput} placeholder="34 TB 4102" placeholderTextColor="#94a3b8" value={regPlate} onChangeText={setRegPlate} />
                   </>
                 )}
 
-                <TouchableOpacity style={styles.primaryBtn} onPress={handleRegister}>
-                  <Text style={styles.primaryBtnText}>Hesap Oluştur ve Başla</Text>
-                  <Ionicons name="checkmark" size={18} color="#fff" />
+                <TouchableOpacity style={styles.applePrimaryBtn} onPress={handleRegister}>
+                  <Text style={styles.applePrimaryBtnText}>Hesap Oluştur</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -867,486 +809,539 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
     );
   }
 
-  // PATRON VEYA TEKNİSYEN EKRANI
+  // ===================== ANA UYGULAMA EKRANLARI =====================
   const isOwner = currentUser.role === 'owner';
   const myCompanyJobs = jobs.filter(j => j.companyId === currentUser.companyId);
   const myTechJobs = jobs.filter(j => j.technicianId === currentUser.id);
   const myCompanyTechs = technicians.filter(t => t.companyId === currentUser.companyId);
 
-  // Kasa Hesapları
-  const completedJobs = myCompanyJobs.filter(j => j.status === 'completed');
-  const totalRevenue = completedJobs.reduce((acc, cur) => acc + (cur.totalAmount || 0), 0);
-  const cashRevenue = completedJobs.filter(j => j.paymentMethod === 'nakit').reduce((acc, cur) => acc + (cur.totalAmount || 0), 0);
-  const ibanRevenue = completedJobs.filter(j => j.paymentMethod === 'havale').reduce((acc, cur) => acc + (cur.totalAmount || 0), 0);
+  // Filtrelenmiş İşler
+  const filteredJobs = myCompanyJobs.filter(j => {
+    if (jobFilter === 'active') return j.status !== 'completed';
+    if (jobFilter === 'completed') return j.status === 'completed';
+    return true;
+  });
 
-  // Aktif Görev (Usta İçin)
+  const activeJobsCount = myCompanyJobs.filter(j => j.status !== 'completed').length;
+  const completedJobsCount = myCompanyJobs.filter(j => j.status === 'completed').length;
+
+  // Usta Aktif Görevi
   const activeTechJob = myTechJobs.find(j => j.status === 'assigned' || j.status === 'in_transit' || j.status === 'in_progress');
+  const finishedTechJobs = myTechJobs.filter(j => j.status === 'completed');
+
+  // Kasa
+  const totalRevenue = myCompanyJobs.filter(j => j.status === 'completed').reduce((acc, cur) => acc + (cur.totalAmount || 0), 0);
+  const cashRevenue = myCompanyJobs.filter(j => j.status === 'completed' && j.paymentMethod === 'nakit').reduce((acc, cur) => acc + (cur.totalAmount || 0), 0);
+  const ibanRevenue = myCompanyJobs.filter(j => j.status === 'completed' && j.paymentMethod === 'havale').reduce((acc, cur) => acc + (cur.totalAmount || 0), 0);
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
 
-      {/* ANLIK TOAST BİLDİRİMİ */}
+      {/* TOAST BİLDİRİMİ */}
       {inAppToast && (
-        <View style={styles.toastContainer}>
-          <Ionicons name="notifications" size={20} color="#fff" />
-          <View style={{ flex: 1, marginLeft: 8 }}>
+        <View style={styles.toastWrap}>
+          <Ionicons name="notifications" size={18} color="#0284c7" />
+          <View style={{ flex: 1, marginLeft: 10 }}>
             <Text style={styles.toastTitle}>{inAppToast.title}</Text>
-            <Text style={styles.toastDesc}>{inAppToast.message}</Text>
+            <Text style={styles.toastMessage}>{inAppToast.message}</Text>
           </View>
         </View>
       )}
 
-      {/* SADE VE TEMİZ ÜST BAŞLIK */}
-      <View style={styles.topBarClean}>
-        <View>
-          <Text style={styles.firmTitle}>{currentUser.companyName}</Text>
-          <Text style={styles.firmUserSub}>{currentUser.name} • {isOwner ? 'Patron Paneli' : 'Saha Teknisyeni'}</Text>
-        </View>
-        {isOwner && (
-          <TouchableOpacity
-            style={styles.headerKatalogBtn}
-            onPress={() => setIsCatalogModalOpen(true)}
-          >
-            <Ionicons name="pricetag-outline" size={14} color="#0284c7" />
-            <Text style={styles.headerKatalogText}>Fiyat Kataloğu</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      {/* ===================== PATRON: İŞLER SEKMESİ (APPLE TARZI FERAH) ===================== */}
+      {isOwner && activeTab === 'jobs' && (
+        <View style={{ flex: 1 }}>
+          <ScrollView contentContainerStyle={styles.scrollArea} showsVerticalScrollIndicator={false}>
+            {/* Apple Büyük Başlık Alanı */}
+            <View style={styles.appleHeaderRow}>
+              <View>
+                <Text style={styles.iosLargeTitle}>İşler</Text>
+                <Text style={styles.iosSubtitle}>{currentUser.companyName} • {activeJobsCount} aktif çağrı</Text>
+              </View>
+              <TouchableOpacity style={styles.appleAddHeaderBtn} onPress={() => setIsNewJobOpen(true)}>
+                <Ionicons name="add" size={20} color="#fff" />
+                <Text style={styles.appleAddHeaderText}>Yeni İş</Text>
+              </TouchableOpacity>
+            </View>
 
-      {/* 14 GÜNLÜK DENEME VE ABONELİK BANNERI (PATRON İÇİN) */}
-      {isOwner && (
-        <View style={styles.trialContainer}>
-          {subscriptionTier === 'trial' ? (
-            <TouchableOpacity style={styles.trialBanner} onPress={() => { setSubModalStep('plans'); setIsSubscriptionModalOpen(true); }}>
-              <View style={styles.trialTopRow}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="time" size={16} color="#d97706" />
-                  <Text style={styles.trialText}> 14 Günlük Deneme Sürümü: <Text style={{ fontWeight: '800', color: '#b45309' }}>{trialDaysLeft} Gün Kaldı</Text></Text>
+            {/* Apple Segmented Filter Pilleri */}
+            <View style={styles.iosFilterBar}>
+              <TouchableOpacity
+                style={[styles.iosFilterPill, jobFilter === 'all' && styles.iosFilterPillActive]}
+                onPress={() => setJobFilter('all')}
+              >
+                <Text style={[styles.iosFilterPillText, jobFilter === 'all' && styles.iosFilterPillTextActive]}>
+                  Tümü ({myCompanyJobs.length})
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.iosFilterPill, jobFilter === 'active' && styles.iosFilterPillActive]}
+                onPress={() => setJobFilter('active')}
+              >
+                <Text style={[styles.iosFilterPillText, jobFilter === 'active' && styles.iosFilterPillTextActive]}>
+                  İşlemde ({activeJobsCount})
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.iosFilterPill, jobFilter === 'completed' && styles.iosFilterPillActive]}
+                onPress={() => setJobFilter('completed')}
+              >
+                <Text style={[styles.iosFilterPillText, jobFilter === 'completed' && styles.iosFilterPillTextActive]}>
+                  Bitenler ({completedJobsCount})
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Temiz ve Yuvarlak Kartlar */}
+            <View style={{ gap: 12 }}>
+              {filteredJobs.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <Ionicons name="calendar-outline" size={40} color="#cbd5e1" />
+                  <Text style={styles.emptyCardTitle}>Bu filtrede iş kaydı yok</Text>
                 </View>
-                <View style={styles.upgradeBadge}>
-                  <Text style={styles.upgradeBadgeText}>Paketi Yükselt 🚀</Text>
-                </View>
-              </View>
-              <View style={styles.trialBarBg}>
-                <View style={[styles.trialBarFill, { width: `${(trialDaysLeft / 14) * 100}%` }]} />
-              </View>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity style={styles.activePlanBanner} onPress={() => { setSubModalStep('plans'); setIsSubscriptionModalOpen(true); }}>
-              <Ionicons name="shield-checkmark" size={16} color="#16a34a" />
-              <Text style={styles.activePlanText}>
-                Lisans Durumu: <Text style={{ fontWeight: '800', color: '#15803d' }}>{subscriptionTier.toUpperCase()} Saha Paketi (Aktif)</Text>
-              </Text>
-              <Ionicons name="chevron-forward" size={14} color="#16a34a" />
-            </TouchableOpacity>
-          )}
+              ) : (
+                filteredJobs.map(job => {
+                  const assignedTech = technicians.find(t => t.id === job.technicianId);
+                  const isDone = job.status === 'completed';
+
+                  return (
+                    <View key={job.id} style={styles.iosJobCard}>
+                      <View style={styles.iosJobCardTop}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <View style={[styles.deviceBadge, job.deviceType === 'Klima' ? styles.badgeKlima : styles.badgeKombi]}>
+                            <Text style={[styles.deviceBadgeText, job.deviceType === 'Klima' ? styles.deviceKlimaText : styles.deviceKombiText]}>
+                              {job.deviceType}
+                            </Text>
+                          </View>
+                          <Text style={styles.iosJobCode}>{job.jobCode}</Text>
+                        </View>
+                        <View style={[styles.statusTag, isDone ? styles.statusTagDone : styles.statusTagActive]}>
+                          <Text style={[styles.statusTagText, isDone ? styles.statusTagTextDone : styles.statusTagTextActive]}>
+                            {isDone ? 'Tamamlandı' : 'Saha İşlemi'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <Text style={styles.iosCustName}>{job.customerName}</Text>
+
+                      <View style={styles.iosLocationRow}>
+                        <Ionicons name="location-sharp" size={14} color="#64748b" />
+                        <Text style={styles.iosLocationText}>{job.district} • {job.address}</Text>
+                      </View>
+
+                      <Text style={styles.iosFaultText}>{job.faultDescription}</Text>
+
+                      {/* Alt Aksiyon & Bilgi Barı */}
+                      <View style={styles.iosCardFooter}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Ionicons name="person-circle-outline" size={16} color="#64748b" />
+                          <Text style={styles.iosTechLabel}>{assignedTech ? assignedTech.name : 'Atanmadı'}</Text>
+                        </View>
+
+                        {isDone ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={styles.iosPriceText}>{job.totalAmount} ₺</Text>
+                            <TouchableOpacity style={styles.iosReceiptBtn} onPress={() => handleSendWhatsAppReceipt(job)}>
+                              <Ionicons name="logo-whatsapp" size={13} color="#16a34a" />
+                              <Text style={styles.iosReceiptBtnText}>Fiş</Text>
+                            </TouchableOpacity>
+                          </View>
+                        ) : (
+                          <TouchableOpacity
+                            style={styles.iosCallBtnMini}
+                            onPress={() => Linking.openURL(`tel:${job.customerPhone}`)}
+                          >
+                            <Ionicons name="call" size={12} color="#0284c7" />
+                            <Text style={styles.iosCallBtnMiniText}>Müşteri Ara</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          </ScrollView>
         </View>
       )}
 
-      {/* SEKMELER */}
-      <View style={{ flex: 1 }}>
-        {/* ===================== PATRON: İŞLER SEKMESİ ===================== */}
-        {isOwner && activeTab === 'jobs' && (
-          <ScrollView contentContainerStyle={styles.tabContent}>
-            {/* 11 AY BAKIM HATIRLATMA BİLGİ KARTI */}
-            {myCompanyJobs.some(j => j.isMaintenanceReminder) && (
-              <View style={styles.maintenanceCard}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Ionicons name="time-outline" size={18} color="#b45309" />
-                  <Text style={styles.maintenanceTitle}>11 Ay Önceki Müşteriler (Bakım Vakti)</Text>
+      {/* ===================== PATRON: EKİP SEKMESİ ===================== */}
+      {isOwner && activeTab === 'team' && (
+        <ScrollView contentContainerStyle={styles.scrollArea} showsVerticalScrollIndicator={false}>
+          <View style={styles.appleHeaderRow}>
+            <View>
+              <Text style={styles.iosLargeTitle}>Ekip</Text>
+              <Text style={styles.iosSubtitle}>{myCompanyTechs.length} kayıtlı teknisyen</Text>
+            </View>
+            <TouchableOpacity style={styles.appleAddHeaderBtn} onPress={() => setIsAddTechOpen(true)}>
+              <Ionicons name="person-add" size={18} color="#fff" />
+              <Text style={styles.appleAddHeaderText}>Usta Ekle</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Ekip Davet Kodu Kartı */}
+          <View style={styles.iosInviteCard}>
+            <View>
+              <Text style={styles.iosInviteLabel}>EKİP DAVET KODU</Text>
+              <Text style={styles.iosInviteCode}>{currentUser.companyCode}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.iosShareCodeBtn}
+              onPress={() => {
+                const shareMsg = `ServisJet ustalık uygulamasına katılmak için ekip davet kodumuz: ${currentUser.companyCode}`;
+                Linking.openURL(`https://wa.me/?text=${encodeURIComponent(shareMsg)}`);
+              }}
+            >
+              <Ionicons name="logo-whatsapp" size={16} color="#fff" />
+              <Text style={styles.iosShareCodeText}>Kodu Paylaş</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={{ gap: 10, marginTop: 12 }}>
+            {myCompanyTechs.map(tech => (
+              <View key={tech.id} style={styles.iosTechItemCard}>
+                <View style={styles.iosTechAvatar}>
+                  <Text style={styles.iosTechAvatarText}>{tech.name.substring(0, 1)}</Text>
                 </View>
-                <Text style={styles.maintenanceDesc}>Aşağıdaki müşterilerin son servisinin üzerinden 11 ay geçti. Tek tıkla yıllık periyodik bakım teklifi atın:</Text>
-                {myCompanyJobs.filter(j => j.isMaintenanceReminder).map(j => (
-                  <View key={j.id} style={styles.maintenanceRow}>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.iosTechName}>{tech.name}</Text>
+                  <Text style={styles.iosTechSub}>{tech.vehiclePlate} • {tech.phone}</Text>
+                </View>
+                <TouchableOpacity style={styles.iosCallIconBtn} onPress={() => Linking.openURL(`tel:${tech.phone}`)}>
+                  <Ionicons name="call" size={18} color="#0284c7" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      )}
+
+      {/* ===================== PATRON: KASA SEKMESİ ===================== */}
+      {isOwner && activeTab === 'cash' && (
+        <ScrollView contentContainerStyle={styles.scrollArea} showsVerticalScrollIndicator={false}>
+          <View style={styles.appleHeaderRow}>
+            <View>
+              <Text style={styles.iosLargeTitle}>Kasa</Text>
+              <Text style={styles.iosSubtitle}>{completedJobsCount} tamamlanan servis geliri</Text>
+            </View>
+          </View>
+
+          {/* Apple Cüzdan Tarzı Koyu Kart */}
+          <View style={styles.iosWalletCard}>
+            <Text style={styles.iosWalletLabel}>TOPLAM KASA GELİRİ</Text>
+            <Text style={styles.iosWalletVal}>{totalRevenue.toLocaleString('tr-TR')} ₺</Text>
+            <View style={styles.iosWalletBreakdown}>
+              <View style={styles.iosWalletBreakItem}>
+                <Text style={styles.iosBreakLabel}>💵 Nakit</Text>
+                <Text style={styles.iosBreakVal}>{cashRevenue.toLocaleString('tr-TR')} ₺</Text>
+              </View>
+              <View style={styles.iosWalletBreakDivider} />
+              <View style={styles.iosWalletBreakItem}>
+                <Text style={styles.iosBreakLabel}>🏦 Havale/EFT</Text>
+                <Text style={styles.iosBreakVal}>{ibanRevenue.toLocaleString('tr-TR')} ₺</Text>
+              </View>
+            </View>
+          </View>
+
+          <Text style={[styles.iosSectionTitle, { marginTop: 20 }]}>Son Tahsilatlar</Text>
+          <View style={{ gap: 8, marginTop: 10 }}>
+            {myCompanyJobs.filter(j => j.status === 'completed').map(j => (
+              <View key={j.id} style={styles.iosCashRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.iosCashCust}>{j.customerName}</Text>
+                  <Text style={styles.iosCashSub}>{j.deviceType} • {j.paymentMethod?.toUpperCase()}</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                  <Text style={styles.iosCashPrice}>+{j.totalAmount} ₺</Text>
+                  <TouchableOpacity style={styles.iosReceiptBtn} onPress={() => handleSendWhatsAppReceipt(j)}>
+                    <Ionicons name="logo-whatsapp" size={11} color="#16a34a" />
+                    <Text style={styles.iosReceiptBtnText}>Fiş Gönder</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      )}
+
+      {/* ===================== USTA: AKTİF GÖREV VE ROTA ===================== */}
+      {!isOwner && activeTab === 'task' && (
+        <ScrollView contentContainerStyle={styles.scrollArea} showsVerticalScrollIndicator={false}>
+          <View style={styles.appleHeaderRow}>
+            <View>
+              <Text style={styles.iosLargeTitle}>Görevim</Text>
+              <Text style={styles.iosSubtitle}>{currentUser.name} • Saha İşlemi</Text>
+            </View>
+          </View>
+
+          {activeTechJob ? (
+            <View style={styles.iosHeroTaskCard}>
+              <View style={styles.iosHeroTop}>
+                <View style={styles.iosHeroBadge}>
+                  <Text style={styles.iosHeroBadgeText}>AKTİF SAHA GÖREVİ</Text>
+                </View>
+                <Text style={styles.iosHeroCode}>{activeTechJob.jobCode}</Text>
+              </View>
+
+              <Text style={styles.iosHeroCust}>{activeTechJob.customerName}</Text>
+              <Text style={styles.iosHeroDevice}>{activeTechJob.deviceType} ({activeTechJob.brandModel})</Text>
+
+              {/* Haritada Aç Kartı */}
+              <TouchableOpacity
+                style={styles.iosMapBanner}
+                onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(activeTechJob.address + ' ' + activeTechJob.district)}`)}
+              >
+                <Ionicons name="navigate-circle" size={28} color="#0284c7" />
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={styles.iosMapDistrict}>{activeTechJob.district}</Text>
+                  <Text style={styles.iosMapAddress}>{activeTechJob.address}</Text>
+                </View>
+                <Text style={styles.iosMapLink}>Harita ➔</Text>
+              </TouchableOpacity>
+
+              {/* Arıza Notu */}
+              <View style={styles.iosFaultBox}>
+                <Ionicons name="alert-circle-outline" size={18} color="#d97706" />
+                <Text style={styles.iosFaultBoxText}>{activeTechJob.faultDescription}</Text>
+              </View>
+
+              {/* 3'lü Hızlı Aksiyon Barı */}
+              <View style={{ flexDirection: 'row', gap: 8, marginVertical: 12 }}>
+                <TouchableOpacity
+                  style={styles.iosActionBtnCall}
+                  onPress={() => Linking.openURL(`tel:${activeTechJob.customerPhone}`)}
+                >
+                  <Ionicons name="call" size={16} color="#fff" />
+                  <Text style={styles.iosActionBtnText}>Ara</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.iosActionBtnWa}
+                  onPress={() => Linking.openURL(`https://wa.me/90${activeTechJob.customerPhone.replace(/[^0-9]/g, '').slice(-10)}`)}
+                >
+                  <Ionicons name="logo-whatsapp" size={16} color="#fff" />
+                  <Text style={styles.iosActionBtnText}>WhatsApp</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Adım Adım İlerleme Butonu */}
+              {activeTechJob.status === 'assigned' && (
+                <TouchableOpacity
+                  style={[styles.iosBigStepBtn, { backgroundColor: '#f59e0b' }]}
+                  onPress={() => {
+                    setJobs(jobs.map(j => j.id === activeTechJob.id ? { ...j, status: 'in_transit' } : j));
+                  }}
+                >
+                  <Ionicons name="car" size={20} color="#fff" />
+                  <Text style={styles.iosBigStepBtnText}>Yola Çıktım ➔</Text>
+                </TouchableOpacity>
+              )}
+
+              {activeTechJob.status === 'in_transit' && (
+                <TouchableOpacity
+                  style={[styles.iosBigStepBtn, { backgroundColor: '#0284c7' }]}
+                  onPress={() => {
+                    setJobs(jobs.map(j => j.id === activeTechJob.id ? { ...j, status: 'in_progress' } : j));
+                  }}
+                >
+                  <Ionicons name="build" size={20} color="#fff" />
+                  <Text style={styles.iosBigStepBtnText}>Adresteyim & Başladım ➔</Text>
+                </TouchableOpacity>
+              )}
+
+              {activeTechJob.status === 'in_progress' && (
+                <TouchableOpacity
+                  style={[styles.iosBigStepBtn, { backgroundColor: '#16a34a' }]}
+                  onPress={() => {
+                    setSelectedJobForPay(activeTechJob);
+                    setIsPayModalOpen(true);
+                  }}
+                >
+                  <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                  <Text style={styles.iosBigStepBtnText}>İşi Tamamla & Fiş Kes ➔</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            <View style={styles.emptyCard}>
+              <Ionicons name="checkmark-done-circle" size={48} color="#16a34a" />
+              <Text style={styles.emptyCardTitle}>Şu an atanmış aktif iş yok</Text>
+              <Text style={styles.emptyCardSub}>Patron yeni iş atadığında telefonunuza anında bildirim gelecek.</Text>
+            </View>
+          )}
+
+          {/* Ekranın altına günün tamamlanan işleri (dolu ve şık durması için) */}
+          {finishedTechJobs.length > 0 && (
+            <View style={{ marginTop: 20 }}>
+              <Text style={styles.iosSectionTitle}>Bugün Biten İşlerim ({finishedTechJobs.length})</Text>
+              <View style={{ gap: 8, marginTop: 10 }}>
+                {finishedTechJobs.map(j => (
+                  <View key={j.id} style={styles.iosCashRow}>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontWeight: '800', color: '#0f172a' }}>{j.customerName}</Text>
-                      <Text style={{ fontSize: 11, color: '#64748b' }}>{j.deviceType} • {j.district}</Text>
+                      <Text style={styles.iosCashCust}>{j.customerName}</Text>
+                      <Text style={styles.iosCashSub}>{j.deviceType} • {j.notes || j.faultDescription}</Text>
                     </View>
-                    <TouchableOpacity style={styles.waOfferBtn} onPress={() => handleSendMaintenanceOffer(j)}>
-                      <Ionicons name="logo-whatsapp" size={14} color="#fff" />
-                      <Text style={styles.waOfferText}>Bakım Teklifi Gönder</Text>
+                    <TouchableOpacity style={styles.iosReceiptBtn} onPress={() => handleSendWhatsAppReceipt(j)}>
+                      <Ionicons name="logo-whatsapp" size={12} color="#16a34a" />
+                      <Text style={styles.iosReceiptBtnText}>Fiş Gönder</Text>
                     </TouchableOpacity>
                   </View>
                 ))}
               </View>
-            )}
-
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Servis Çağrıları & İşler ({myCompanyJobs.length})</Text>
-              <TouchableOpacity style={styles.actionPillBtn} onPress={() => setIsNewJobOpen(true)}>
-                <Ionicons name="add" size={16} color="#fff" />
-                <Text style={styles.actionPillText}>Yeni İş Aç</Text>
-              </TouchableOpacity>
             </View>
+          )}
+        </ScrollView>
+      )}
 
-            <View style={{ gap: 10 }}>
-              {myCompanyJobs.map(job => {
-                const assigned = technicians.find(t => t.id === job.technicianId);
-                return (
-                  <View key={job.id} style={styles.cleanJobCard}>
-                    <View style={styles.cleanJobHeader}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <Text style={styles.cleanJobCode}>{job.jobCode}</Text>
-                        <View style={[styles.badgePill, job.status === 'completed' ? styles.badgeSuccess : styles.badgeProgress]}>
-                          <Text style={[styles.badgeText, job.status === 'completed' ? styles.badgeTextSuccess : styles.badgeTextProgress]}>
-                            {job.status === 'completed' ? 'Tamamlandı' : 'Saha İşlemi'}
-                          </Text>
-                        </View>
-                      </View>
-                      {job.status === 'completed' && (
-                        <TouchableOpacity style={styles.waReceiptMiniBtn} onPress={() => handleSendWhatsAppReceipt(job)}>
-                          <Ionicons name="logo-whatsapp" size={12} color="#059669" />
-                          <Text style={styles.waReceiptMiniText}>Servis Fişi</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-
-                    <Text style={styles.cleanJobCust}>{job.customerName} • {job.customerPhone}</Text>
-                    <Text style={styles.cleanJobDesc}>{job.deviceType} - {job.faultDescription} ({job.district})</Text>
-
-                    {/* Fotoğraflar Varsa Minik Önizleme */}
-                    {(job.photoOld || job.photoNew) && (
-                      <View style={{ flexDirection: 'row', gap: 6, marginVertical: 6 }}>
-                        {job.photoOld && <Image source={{ uri: job.photoOld }} style={styles.proofThumb} />}
-                        {job.photoNew && <Image source={{ uri: job.photoNew }} style={styles.proofThumb} />}
-                      </View>
-                    )}
-
-                    <View style={styles.cleanJobFooter}>
-                      <Text style={styles.cleanJobTech}>Usta: {assigned ? assigned.name : 'Atanmadı'}</Text>
-                      {job.status === 'completed' && (
-                        <Text style={styles.cleanJobPrice}>{job.totalAmount} ₺ ({job.paymentMethod?.toUpperCase()})</Text>
-                      )}
-                    </View>
-                  </View>
-                );
-              })}
+      {/* ===================== USTA: BİTENLER SEKMESİ ===================== */}
+      {!isOwner && activeTab === 'history' && (
+        <ScrollView contentContainerStyle={styles.scrollArea} showsVerticalScrollIndicator={false}>
+          <View style={styles.appleHeaderRow}>
+            <View>
+              <Text style={styles.iosLargeTitle}>Bitenler</Text>
+              <Text style={styles.iosSubtitle}>{finishedTechJobs.length} servis tamamlandı</Text>
             </View>
-          </ScrollView>
-        )}
+          </View>
 
-        {/* ===================== PATRON: EKİP SEKMESİ ===================== */}
-        {isOwner && activeTab === 'team' && (
-          <ScrollView contentContainerStyle={styles.tabContent}>
-            <View style={styles.inviteCodeBox}>
-              <Text style={styles.inviteLabel}>Ekip Davet Kodunuz</Text>
-              <Text style={styles.inviteCode}>{currentUser.companyCode}</Text>
-              <Text style={styles.inviteSub}>Ustalarınız uygulamayı indirip bu kodla kaydolduklarında otomatik ekibinize dahil olur.</Text>
-            </View>
-
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Saha Ustaları ({myCompanyTechs.length})</Text>
-            </View>
-
-            <View style={{ gap: 10 }}>
-              {myCompanyTechs.map(tech => (
-                <View key={tech.id} style={styles.cleanTechCard}>
-                  <View style={styles.techIconBox}>
-                    <Ionicons name="person" size={20} color="#0284c7" />
-                  </View>
-                  <View style={{ flex: 1, marginLeft: 10 }}>
-                    <Text style={styles.cleanTechName}>{tech.name}</Text>
-                    <Text style={styles.cleanTechSub}>Araç: {tech.vehiclePlate} • {tech.phone}</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.callCircleBtn}
-                    onPress={() => Linking.openURL(`tel:${tech.phone}`)}
-                  >
-                    <Ionicons name="call" size={16} color="#0284c7" />
-                  </TouchableOpacity>
+          <View style={{ gap: 10, marginTop: 12 }}>
+            {finishedTechJobs.map(j => (
+              <View key={j.id} style={styles.iosJobCard}>
+                <View style={styles.iosJobCardTop}>
+                  <Text style={styles.iosJobCode}>{j.jobCode}</Text>
+                  <Text style={styles.iosPriceText}>{j.totalAmount} ₺</Text>
                 </View>
-              ))}
-            </View>
-
-            <TouchableOpacity style={styles.bigAddBtn} onPress={() => setIsAddTechOpen(true)}>
-              <Ionicons name="person-add" size={18} color="#fff" />
-              <Text style={styles.bigAddBtnText}>+ Usta Ekle</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        )}
-
-        {/* ===================== PATRON: KASA SEKMESİ ===================== */}
-        {isOwner && activeTab === 'cash' && (
-          <ScrollView contentContainerStyle={styles.tabContent}>
-            <View style={styles.totalCashCard}>
-              <Text style={styles.totalCashLabel}>TOPLAM KASA GELİRİ</Text>
-              <Text style={styles.totalCashVal}>{totalRevenue.toLocaleString('tr-TR')} ₺</Text>
-              <Text style={styles.totalCashSub}>{completedJobs.length} Servis Başarıyla Tamamlandı</Text>
-            </View>
-
-            <View style={{ flexDirection: 'row', gap: 10, marginVertical: 14 }}>
-              <View style={styles.cashMiniBox}>
-                <Text style={styles.cashMiniLabel}>💵 Nakit Tahsilat</Text>
-                <Text style={styles.cashMiniVal}>{cashRevenue.toLocaleString('tr-TR')} ₺</Text>
+                <Text style={styles.iosCustName}>{j.customerName}</Text>
+                <Text style={styles.iosLocationText}>{j.deviceType} • {j.district}</Text>
+                <TouchableOpacity style={styles.applePrimaryBtn} onPress={() => handleSendWhatsAppReceipt(j)}>
+                  <Ionicons name="logo-whatsapp" size={16} color="#fff" />
+                  <Text style={styles.applePrimaryBtnText}>1 Yıl Garantili Fiş Gönder</Text>
+                </TouchableOpacity>
               </View>
-              <View style={styles.cashMiniBox}>
-                <Text style={styles.cashMiniLabel}>🏦 Havale / EFT</Text>
-                <Text style={styles.cashMiniVal}>{ibanRevenue.toLocaleString('tr-TR')} ₺</Text>
-              </View>
+            ))}
+          </View>
+        </ScrollView>
+      )}
+
+      {/* ===================== PROFİL VE AYARLAR SEKMESİ (APPLE INSET LIST) ===================== */}
+      {activeTab === 'profile' && (
+        <ScrollView contentContainerStyle={styles.scrollArea} showsVerticalScrollIndicator={false}>
+          <View style={styles.appleHeaderRow}>
+            <View>
+              <Text style={styles.iosLargeTitle}>Profil</Text>
+              <Text style={styles.iosSubtitle}>{currentUser.companyName}</Text>
             </View>
+          </View>
 
-            {/* Hızlı Fiyat Kataloğu Butonu */}
-            <TouchableOpacity style={styles.katalogQuickBanner} onPress={() => setIsCatalogModalOpen(true)}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <View style={styles.katalogIconCircle}>
-                  <Ionicons name="pricetag" size={18} color="#0284c7" />
-                </View>
-                <View>
-                  <Text style={{ fontWeight: '800', color: '#0f172a' }}>Fiyat & Yedek Parça Kataloğu</Text>
-                  <Text style={{ fontSize: 11, color: '#64748b' }}>{catalog.length} adet standart parça/işlem tanımlı</Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
-            </TouchableOpacity>
-
-            <Text style={[styles.sectionTitle, { marginVertical: 10 }]}>Son Tahsilatlar</Text>
-            <View style={{ gap: 8 }}>
-              {completedJobs.map(j => (
-                <View key={j.id} style={styles.cashRowCard}>
-                  <View>
-                    <Text style={styles.cashCustName}>{j.customerName}</Text>
-                    <Text style={styles.cashCustSub}>{j.deviceType} • {j.paymentMethod?.toUpperCase()}</Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                    <Text style={styles.cashAmountText}>+{j.totalAmount} ₺</Text>
-                    <TouchableOpacity style={styles.receiptSmallBtn} onPress={() => handleSendWhatsAppReceipt(j)}>
-                      <Ionicons name="logo-whatsapp" size={10} color="#059669" />
-                      <Text style={styles.receiptSmallText}>Fiş Gönder</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
+          {/* Profil Kartı */}
+          <View style={styles.iosProfileCard}>
+            <View style={styles.iosProfileAvatarWrap}>
+              <Text style={styles.iosProfileAvatarInitial}>{currentUser.name.substring(0, 1)}</Text>
             </View>
-          </ScrollView>
-        )}
+            <Text style={styles.iosProfileName}>{currentUser.name}</Text>
+            <Text style={styles.iosProfileRole}>{isOwner ? 'Firma Sahibi (Patron)' : 'Saha Ustası'} • {currentUser.phone}</Text>
+          </View>
 
-        {/* ===================== USTA: AKTİF GÖREV SEKMESİ ===================== */}
-        {!isOwner && activeTab === 'task' && (
-          <ScrollView contentContainerStyle={styles.tabContent}>
-            {activeTechJob ? (
-              <View style={styles.activeJobBox}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <View style={styles.activeJobPill}>
-                    <Text style={styles.activeJobPillText}>AKTİF SAHA GÖREVİ</Text>
+          {/* Apple Menü Grubu */}
+          <View style={styles.iosMenuGroup}>
+            {isOwner && (
+              <>
+                <TouchableOpacity
+                  style={styles.iosMenuItem}
+                  onPress={() => { setSubModalStep('plans'); setIsSubscriptionModalOpen(true); }}
+                >
+                  <View style={[styles.iosMenuIconWrap, { backgroundColor: '#fef3c7' }]}>
+                    <Ionicons name="diamond" size={18} color="#d97706" />
                   </View>
-                  <Text style={{ fontWeight: '800', color: '#64748b', fontSize: 12 }}>{activeTechJob.jobCode}</Text>
-                </View>
-
-                <Text style={styles.activeCustTitle}>{activeTechJob.customerName}</Text>
-                <Text style={styles.activeDeviceTitle}>{activeTechJob.deviceType} ({activeTechJob.brandModel})</Text>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.iosMenuTitle}>Abonelik & Lisans</Text>
+                    <Text style={styles.iosMenuSub}>
+                      {subscriptionTier === 'trial' ? `14 Günlük Deneme (${trialDaysLeft} gün kaldı)` : `${subscriptionTier.toUpperCase()} Paketi (Aktif)`}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color="#cbd5e1" />
+                </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.navBox}
-                  onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(activeTechJob.address + ' ' + activeTechJob.district)}`)}
+                  style={styles.iosMenuItem}
+                  onPress={() => setIsCatalogModalOpen(true)}
                 >
-                  <Ionicons name="navigate" size={18} color="#0284c7" />
-                  <View style={{ marginLeft: 8, flex: 1 }}>
-                    <Text style={{ fontWeight: '800', color: '#0f172a', fontSize: 13 }}>{activeTechJob.district}</Text>
-                    <Text style={{ color: '#64748b', fontSize: 12 }}>{activeTechJob.address}</Text>
+                  <View style={[styles.iosMenuIconWrap, { backgroundColor: '#e0f2fe' }]}>
+                    <Ionicons name="pricetags" size={18} color="#0284c7" />
                   </View>
-                  <Text style={{ color: '#0284c7', fontSize: 11, fontWeight: '700' }}>Haritada Aç</Text>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.iosMenuTitle}>Fiyat & Parça Kataloğu</Text>
+                    <Text style={styles.iosMenuSub}>{catalog.length} sabit tarife parça/işlem</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color="#cbd5e1" />
                 </TouchableOpacity>
-
-                <View style={styles.faultNotice}>
-                  <Ionicons name="warning-outline" size={16} color="#b45309" />
-                  <Text style={{ color: '#b45309', fontSize: 12, flex: 1 }}>{activeTechJob.faultDescription}</Text>
-                </View>
-
-                <View style={{ flexDirection: 'row', gap: 8, marginVertical: 10 }}>
-                  <TouchableOpacity
-                    style={styles.btnCall}
-                    onPress={() => Linking.openURL(`tel:${activeTechJob.customerPhone}`)}
-                  >
-                    <Ionicons name="call" size={16} color="#fff" />
-                    <Text style={styles.btnActionText}>Müşteriyi Ara</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.btnWa}
-                    onPress={() => Linking.openURL(`https://wa.me/90${activeTechJob.customerPhone.replace(/[^0-9]/g, '').slice(-10)}`)}
-                  >
-                    <Ionicons name="logo-whatsapp" size={16} color="#fff" />
-                    <Text style={styles.btnActionText}>WhatsApp</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* İş Durumu İlerleme Butonları */}
-                {activeTechJob.status === 'assigned' && (
-                  <TouchableOpacity
-                    style={[styles.bigStepBtn, { backgroundColor: '#f59e0b' }]}
-                    onPress={() => {
-                      setJobs(jobs.map(j => j.id === activeTechJob.id ? { ...j, status: 'in_transit' } : j));
-                    }}
-                  >
-                    <Ionicons name="car" size={20} color="#fff" />
-                    <Text style={styles.bigStepBtnText}>Yola Çıktım</Text>
-                  </TouchableOpacity>
-                )}
-
-                {activeTechJob.status === 'in_transit' && (
-                  <TouchableOpacity
-                    style={[styles.bigStepBtn, { backgroundColor: '#0284c7' }]}
-                    onPress={() => {
-                      setJobs(jobs.map(j => j.id === activeTechJob.id ? { ...j, status: 'in_progress' } : j));
-                    }}
-                  >
-                    <Ionicons name="build" size={20} color="#fff" />
-                    <Text style={styles.bigStepBtnText}>Adrese Vardım, Cihaza Başladım</Text>
-                  </TouchableOpacity>
-                )}
-
-                {activeTechJob.status === 'in_progress' && (
-                  <TouchableOpacity
-                    style={[styles.bigStepBtn, { backgroundColor: '#16a34a' }]}
-                    onPress={() => {
-                      setSelectedJobForPay(activeTechJob);
-                      setIsPayModalOpen(true);
-                    }}
-                  >
-                    <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                    <Text style={styles.bigStepBtnText}>İşi Tamamla & Tahsilat Al</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            ) : (
-              <View style={styles.emptyBox}>
-                <Ionicons name="checkbox-outline" size={48} color="#94a3b8" />
-                <Text style={styles.emptyTitle}>Şu an atanmış aktif görev yok</Text>
-                <Text style={styles.emptySub}>Patron yeni servis atadığında anında bildirim alacaksınız.</Text>
-              </View>
-            )}
-          </ScrollView>
-        )}
-
-        {/* ===================== USTA: BİTENLER SEKMESİ ===================== */}
-        {!isOwner && activeTab === 'history' && (
-          <ScrollView contentContainerStyle={styles.tabContent}>
-            <Text style={styles.sectionTitle}>Tamamladığım İşler ({myTechJobs.filter(j => j.status === 'completed').length})</Text>
-            <View style={{ gap: 10, marginTop: 10 }}>
-              {myTechJobs.filter(j => j.status === 'completed').map(j => (
-                <View key={j.id} style={styles.cleanJobCard}>
-                  <View style={styles.cleanJobHeader}>
-                    <Text style={styles.cleanJobCode}>{j.jobCode}</Text>
-                    <Text style={styles.cleanJobPrice}>{j.totalAmount} ₺</Text>
-                  </View>
-                  <Text style={styles.cleanJobCust}>{j.customerName}</Text>
-                  <Text style={styles.cleanJobDesc}>{j.deviceType} • {j.notes || j.faultDescription}</Text>
-                  <TouchableOpacity style={styles.receiptBigBtn} onPress={() => handleSendWhatsAppReceipt(j)}>
-                    <Ionicons name="logo-whatsapp" size={14} color="#fff" />
-                    <Text style={styles.receiptBigBtnText}>Servis Fişi & 1 Yıl Garanti Gönder</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-          </ScrollView>
-        )}
-
-        {/* ===================== PROFİL VE AYARLAR SEKMESİ ===================== */}
-        {activeTab === 'profile' && (
-          <ScrollView contentContainerStyle={styles.tabContent}>
-            <View style={styles.profileBox}>
-              <View style={styles.profileAvatar}>
-                <Ionicons name="person" size={32} color="#0284c7" />
-              </View>
-              <Text style={styles.profileName}>{currentUser.name}</Text>
-              <Text style={styles.profilePhone}>{currentUser.phone}</Text>
-              <View style={styles.profileBadge}>
-                <Text style={styles.profileBadgeText}>{isOwner ? 'Firma Sahibi (Patron)' : 'Saha Ustası'}</Text>
-              </View>
-            </View>
-
-            {/* PATRON İÇİN ABONELİK VE KATALOG HIZLI YÖNETİMİ */}
-            {isOwner && (
-              <View style={{ gap: 10, marginBottom: 16 }}>
-                <TouchableOpacity style={styles.profileActionCard} onPress={() => { setSubModalStep('plans'); setIsSubscriptionModalOpen(true); }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <View style={[styles.profileIconWrap, { backgroundColor: '#fef3c7' }]}>
-                      <Ionicons name="diamond" size={20} color="#d97706" />
-                    </View>
-                    <View>
-                      <Text style={{ fontWeight: '800', color: '#0f172a' }}>Abonelik & Paket Durumu</Text>
-                      <Text style={{ fontSize: 11, color: '#64748b' }}>
-                        {subscriptionTier === 'trial' ? `14 Günlük Deneme (${trialDaysLeft} gün kaldı)` : `${subscriptionTier.toUpperCase()} Paketi`}
-                      </Text>
-                    </View>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.profileActionCard} onPress={() => setIsCatalogModalOpen(true)}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <View style={[styles.profileIconWrap, { backgroundColor: '#e0f2fe' }]}>
-                      <Ionicons name="pricetags" size={20} color="#0284c7" />
-                    </View>
-                    <View>
-                      <Text style={{ fontWeight: '800', color: '#0f172a' }}>Fiyat & Yedek Parça Kataloğu</Text>
-                      <Text style={{ fontSize: 11, color: '#64748b' }}>{catalog.length} Standart Parça / Hizmet</Text>
-                    </View>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
-                </TouchableOpacity>
-              </View>
+              </>
             )}
 
-            <View style={styles.cardSettingsList}>
-              <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>Firma Adı</Text>
-                <Text style={styles.settingVal}>{currentUser.companyName}</Text>
+            <View style={styles.iosMenuItem}>
+              <View style={[styles.iosMenuIconWrap, { backgroundColor: '#f1f5f9' }]}>
+                <Ionicons name="business" size={18} color="#475569" />
               </View>
-              <View style={styles.settingRow}>
-                <Text style={styles.settingLabel}>Şirket Kodu</Text>
-                <Text style={styles.settingVal}>{currentUser.companyCode}</Text>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.iosMenuTitle}>Firma</Text>
+                <Text style={styles.iosMenuSub}>{currentUser.companyName} (Kod: {currentUser.companyCode})</Text>
               </View>
-              {currentUser.vehiclePlate && (
-                <View style={styles.settingRow}>
-                  <Text style={styles.settingLabel}>Araç Plakası</Text>
-                  <Text style={styles.settingVal}>{currentUser.vehiclePlate}</Text>
-                </View>
-              )}
             </View>
 
-            <TouchableOpacity style={styles.logoutFullBtn} onPress={handleLogout}>
-              <Ionicons name="log-out-outline" size={18} color="#ef4444" />
-              <Text style={styles.logoutFullText}>Hesaptan Çıkış Yap</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        )}
-      </View>
+            {currentUser.vehiclePlate && (
+              <View style={styles.iosMenuItem}>
+                <View style={[styles.iosMenuIconWrap, { backgroundColor: '#f1f5f9' }]}>
+                  <Ionicons name="car" size={18} color="#475569" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.iosMenuTitle}>Araç Plakası</Text>
+                  <Text style={styles.iosMenuSub}>{currentUser.vehiclePlate}</Text>
+                </View>
+              </View>
+            )}
+          </View>
 
-      {/* ===================== BOTTOM NAVIGATION BAR ===================== */}
-      <View style={styles.bottomTabBar}>
+          <TouchableOpacity style={styles.iosLogoutBtn} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={18} color="#ef4444" />
+            <Text style={styles.iosLogoutText}>Hesaptan Çıkış Yap</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      )}
+
+      {/* ===================== APPLE ALT GEZİNME ÇUBUĞU (TAB BAR) ===================== */}
+      <View style={styles.appleTabBar}>
         {isOwner ? (
           <>
-            <TouchableOpacity style={styles.tabItem} onPress={() => setActiveTab('jobs')}>
-              <Ionicons name={activeTab === 'jobs' ? 'list' : 'list-outline'} size={22} color={activeTab === 'jobs' ? '#0284c7' : '#94a3b8'} />
-              <Text style={[styles.tabItemText, activeTab === 'jobs' && styles.tabItemTextActive]}>İşler</Text>
+            <TouchableOpacity style={styles.appleTabItem} onPress={() => setActiveTab('jobs')}>
+              <Ionicons name={activeTab === 'jobs' ? 'list' : 'list-outline'} size={24} color={activeTab === 'jobs' ? '#0284c7' : '#94a3b8'} />
+              <Text style={[styles.appleTabText, activeTab === 'jobs' && styles.appleTabTextActive]}>İşler</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.tabItem} onPress={() => setActiveTab('team')}>
-              <Ionicons name={activeTab === 'team' ? 'people' : 'people-outline'} size={22} color={activeTab === 'team' ? '#0284c7' : '#94a3b8'} />
-              <Text style={[styles.tabItemText, activeTab === 'team' && styles.tabItemTextActive]}>Ekip</Text>
+            <TouchableOpacity style={styles.appleTabItem} onPress={() => setActiveTab('team')}>
+              <Ionicons name={activeTab === 'team' ? 'people' : 'people-outline'} size={24} color={activeTab === 'team' ? '#0284c7' : '#94a3b8'} />
+              <Text style={[styles.appleTabText, activeTab === 'team' && styles.appleTabTextActive]}>Ekip</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.tabItem} onPress={() => setActiveTab('cash')}>
-              <Ionicons name={activeTab === 'cash' ? 'wallet' : 'wallet-outline'} size={22} color={activeTab === 'cash' ? '#0284c7' : '#94a3b8'} />
-              <Text style={[styles.tabItemText, activeTab === 'cash' && styles.tabItemTextActive]}>Kasa</Text>
+            <TouchableOpacity style={styles.appleTabItem} onPress={() => setActiveTab('cash')}>
+              <Ionicons name={activeTab === 'cash' ? 'wallet' : 'wallet-outline'} size={24} color={activeTab === 'cash' ? '#0284c7' : '#94a3b8'} />
+              <Text style={[styles.appleTabText, activeTab === 'cash' && styles.appleTabTextActive]}>Kasa</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.tabItem} onPress={() => setActiveTab('profile')}>
-              <Ionicons name={activeTab === 'profile' ? 'person' : 'person-outline'} size={22} color={activeTab === 'profile' ? '#0284c7' : '#94a3b8'} />
-              <Text style={[styles.tabItemText, activeTab === 'profile' && styles.tabItemTextActive]}>Profil</Text>
+            <TouchableOpacity style={styles.appleTabItem} onPress={() => setActiveTab('profile')}>
+              <Ionicons name={activeTab === 'profile' ? 'person' : 'person-outline'} size={24} color={activeTab === 'profile' ? '#0284c7' : '#94a3b8'} />
+              <Text style={[styles.appleTabText, activeTab === 'profile' && styles.appleTabTextActive]}>Profil</Text>
             </TouchableOpacity>
           </>
         ) : (
           <>
-            <TouchableOpacity style={styles.tabItem} onPress={() => setActiveTab('task')}>
-              <Ionicons name={activeTab === 'task' ? 'construct' : 'construct-outline'} size={22} color={activeTab === 'task' ? '#0284c7' : '#94a3b8'} />
-              <Text style={[styles.tabItemText, activeTab === 'task' && styles.tabItemTextActive]}>Görev</Text>
+            <TouchableOpacity style={styles.appleTabItem} onPress={() => setActiveTab('task')}>
+              <Ionicons name={activeTab === 'task' ? 'construct' : 'construct-outline'} size={24} color={activeTab === 'task' ? '#0284c7' : '#94a3b8'} />
+              <Text style={[styles.appleTabText, activeTab === 'task' && styles.appleTabTextActive]}>Görev</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.tabItem} onPress={() => setActiveTab('history')}>
-              <Ionicons name={activeTab === 'history' ? 'checkmark-done-circle' : 'checkmark-done-circle-outline'} size={22} color={activeTab === 'history' ? '#0284c7' : '#94a3b8'} />
-              <Text style={[styles.tabItemText, activeTab === 'history' && styles.tabItemTextActive]}>Bitenler</Text>
+            <TouchableOpacity style={styles.appleTabItem} onPress={() => setActiveTab('history')}>
+              <Ionicons name={activeTab === 'history' ? 'checkmark-done-circle' : 'checkmark-done-circle-outline'} size={24} color={activeTab === 'history' ? '#0284c7' : '#94a3b8'} />
+              <Text style={[styles.appleTabText, activeTab === 'history' && styles.appleTabTextActive]}>Bitenler</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.tabItem} onPress={() => setActiveTab('profile')}>
-              <Ionicons name={activeTab === 'profile' ? 'person' : 'person-outline'} size={22} color={activeTab === 'profile' ? '#0284c7' : '#94a3b8'} />
-              <Text style={[styles.tabItemText, activeTab === 'profile' && styles.tabItemTextActive]}>Profil</Text>
+            <TouchableOpacity style={styles.appleTabItem} onPress={() => setActiveTab('profile')}>
+              <Ionicons name={activeTab === 'profile' ? 'person' : 'person-outline'} size={24} color={activeTab === 'profile' ? '#0284c7' : '#94a3b8'} />
+              <Text style={[styles.appleTabText, activeTab === 'profile' && styles.appleTabTextActive]}>Profil</Text>
             </TouchableOpacity>
           </>
         )}
@@ -1355,17 +1350,18 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
       {/* ===================== MODAL: YENİ İŞ KAYDI ===================== */}
       <Modal visible={isNewJobOpen} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBg}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalTop}>
-              <Text style={styles.modalHeading}>Yeni Servis Çağrısı Aç</Text>
-              <TouchableOpacity onPress={() => setIsNewJobOpen(false)}>
-                <Ionicons name="close" size={22} color="#64748b" />
+          <View style={styles.iosModalSheet}>
+            <View style={styles.iosModalTop}>
+              <Text style={styles.iosModalTitle}>Yeni Servis Çağrısı</Text>
+              <TouchableOpacity onPress={() => setIsNewJobOpen(false)} style={styles.iosCloseCircle}>
+                <Ionicons name="close" size={20} color="#64748b" />
               </TouchableOpacity>
             </View>
+
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.inputLabel}>Müşteri Telefonu</Text>
               <TextInput
-                style={styles.input}
+                style={styles.iosInput}
                 placeholder="05XX XXX XX XX"
                 placeholderTextColor="#94a3b8"
                 keyboardType="phone-pad"
@@ -1374,60 +1370,33 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
               />
 
               {matchedOldCustomer && (
-                <TouchableOpacity style={styles.matchedCustomerBanner} onPress={handleAutoFillOldCustomer}>
+                <TouchableOpacity style={styles.iosMemoryPill} onPress={handleAutoFillOldCustomer}>
                   <Ionicons name="flash" size={16} color="#0284c7" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontWeight: '800', color: '#0284c7', fontSize: 12 }}>Eski Müşteri Hafızası Bulundu!</Text>
-                    <Text style={{ fontSize: 11, color: '#0369a1' }}>{matchedOldCustomer.customerName} ({matchedOldCustomer.district}) - Tıkla ve Doldur</Text>
-                  </View>
+                  <Text style={styles.iosMemoryText}>{matchedOldCustomer.customerName} ({matchedOldCustomer.district}) - Tıkla ve Doldur</Text>
                 </TouchableOpacity>
               )}
 
-              <Text style={styles.inputLabel}>Müşteri Adı Soyadı</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Örn: Selim Bey"
-                placeholderTextColor="#94a3b8"
-                value={cName}
-                onChangeText={setCName}
-              />
+              <Text style={styles.inputLabel}>Müşteri Ad Soyad</Text>
+              <TextInput style={styles.iosInput} placeholder="Örn: Selim Bey" placeholderTextColor="#94a3b8" value={cName} onChangeText={setCName} />
 
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>Cihaz Türü</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Kombi, Klima..."
-                    placeholderTextColor="#94a3b8"
-                    value={cDevice}
-                    onChangeText={setCDevice}
-                  />
+                  <Text style={styles.inputLabel}>Cihaz</Text>
+                  <TextInput style={styles.iosInput} placeholder="Kombi, Klima..." placeholderTextColor="#94a3b8" value={cDevice} onChangeText={setCDevice} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>İlçe / Bölge</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Kadıköy..."
-                    placeholderTextColor="#94a3b8"
-                    value={cDistrict}
-                    onChangeText={setCDistrict}
-                  />
+                  <Text style={styles.inputLabel}>İlçe</Text>
+                  <TextInput style={styles.iosInput} placeholder="Kadıköy..." placeholderTextColor="#94a3b8" value={cDistrict} onChangeText={setCDistrict} />
                 </View>
               </View>
 
               <Text style={styles.inputLabel}>Açık Adres</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Mahalle, Sokak, No, Daire..."
-                placeholderTextColor="#94a3b8"
-                value={cAddress}
-                onChangeText={setCAddress}
-              />
+              <TextInput style={styles.iosInput} placeholder="Mahalle, Sokak, No..." placeholderTextColor="#94a3b8" value={cAddress} onChangeText={setCAddress} />
 
-              <Text style={styles.inputLabel}>Arıza / Şikayet Detayı</Text>
+              <Text style={styles.inputLabel}>Arıza Şikayeti</Text>
               <TextInput
-                style={[styles.input, { height: 60 }]}
-                placeholder="Sıcak su vermiyor, petekler ısınmıyor..."
+                style={[styles.iosInput, { height: 60 }]}
+                placeholder="Sıcak su akmıyor, hata kodu..."
                 placeholderTextColor="#94a3b8"
                 multiline
                 value={cFault}
@@ -1435,153 +1404,100 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
               />
 
               <Text style={styles.inputLabel}>Atanacak Usta</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
                 {myCompanyTechs.map(t => (
                   <TouchableOpacity
                     key={t.id}
-                    style={[styles.techPill, selectedTech === t.id && styles.techPillActive]}
+                    style={[styles.iosTechSelectPill, selectedTech === t.id && styles.iosTechSelectPillActive]}
                     onPress={() => setSelectedTech(t.id)}
                   >
-                    <Text style={[styles.techPillText, selectedTech === t.id && styles.techPillTextActive]}>{t.name}</Text>
+                    <Text style={[styles.iosTechSelectText, selectedTech === t.id && styles.iosTechSelectTextActive]}>
+                      {t.name}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
 
-              <TouchableOpacity style={styles.primaryBtn} onPress={handleCreateJob}>
+              <TouchableOpacity style={styles.applePrimaryBtn} onPress={handleCreateJob}>
                 <Ionicons name="paper-plane" size={18} color="#fff" />
-                <Text style={styles.primaryBtnText}>İşi Kaydet ve Ustaya Bildir</Text>
+                <Text style={styles.applePrimaryBtnText}>Kaydet & Ustaya Bildir</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ===================== MODAL: YENİ USTA EKLE ===================== */}
+      {/* ===================== MODAL: USTA EKLE ===================== */}
       <Modal visible={isAddTechOpen} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBg}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalTop}>
-              <Text style={styles.modalHeading}>Ekibe Yeni Usta Ekle</Text>
-              <TouchableOpacity onPress={() => setIsAddTechOpen(false)}>
-                <Ionicons name="close" size={22} color="#64748b" />
+          <View style={styles.iosModalSheet}>
+            <View style={styles.iosModalTop}>
+              <Text style={styles.iosModalTitle}>Ekibe Usta Ekle</Text>
+              <TouchableOpacity onPress={() => setIsAddTechOpen(false)} style={styles.iosCloseCircle}>
+                <Ionicons name="close" size={20} color="#64748b" />
               </TouchableOpacity>
             </View>
-            <Text style={styles.inputLabel}>Usta Adı Soyadı</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Örn: Mehmet Usta"
-              placeholderTextColor="#94a3b8"
-              value={newTechName}
-              onChangeText={setNewTechName}
-            />
-            <Text style={styles.inputLabel}>Telefon Numarası</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="05XX XXX XX XX"
-              placeholderTextColor="#94a3b8"
-              keyboardType="phone-pad"
-              value={newTechPhone}
-              onChangeText={setNewTechPhone}
-            />
+
+            <Text style={styles.inputLabel}>Usta Ad Soyad</Text>
+            <TextInput style={styles.iosInput} placeholder="Örn: Mehmet Usta" placeholderTextColor="#94a3b8" value={newTechName} onChangeText={setNewTechName} />
+
+            <Text style={styles.inputLabel}>Telefon</Text>
+            <TextInput style={styles.iosInput} placeholder="05XX XXX XX XX" placeholderTextColor="#94a3b8" keyboardType="phone-pad" value={newTechPhone} onChangeText={setNewTechPhone} />
+
             <Text style={styles.inputLabel}>Araç Plakası</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="34 TB 4102"
-              placeholderTextColor="#94a3b8"
-              value={newTechPlate}
-              onChangeText={setNewTechPlate}
-            />
-            <Text style={styles.inputLabel}>Giriş Şifresi (Varsayılan: 1234)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="1234"
-              placeholderTextColor="#94a3b8"
-              value={newTechPass}
-              onChangeText={setNewTechPass}
-            />
-            <TouchableOpacity style={styles.primaryBtn} onPress={handleAddTech}>
-              <Text style={styles.primaryBtnText}>Ustayı Kaydet</Text>
+            <TextInput style={styles.iosInput} placeholder="34 TB 4102" placeholderTextColor="#94a3b8" value={newTechPlate} onChangeText={setNewTechPlate} />
+
+            <Text style={styles.inputLabel}>Giriş Şifresi</Text>
+            <TextInput style={styles.iosInput} placeholder="1234" placeholderTextColor="#94a3b8" value={newTechPass} onChangeText={setNewTechPass} />
+
+            <TouchableOpacity style={styles.applePrimaryBtn} onPress={handleAddTech}>
+              <Text style={styles.applePrimaryBtnText}>Ustayı Kaydet</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ===================== MODAL: İŞİ BİTİR & TAHSİLAT & PARÇA (USTA) ===================== */}
+      {/* ===================== MODAL: İŞİ BİTİR & TAHSİLAT ===================== */}
       <Modal visible={isPayModalOpen} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBg}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalTop}>
-              <Text style={styles.modalHeading}>İşi Tamamla & Tahsilat</Text>
-              <TouchableOpacity onPress={() => setIsPayModalOpen(false)}>
-                <Ionicons name="close" size={22} color="#64748b" />
+          <View style={[styles.iosModalSheet, { maxHeight: '92%' }]}>
+            <View style={styles.iosModalTop}>
+              <Text style={styles.iosModalTitle}>İşi Tamamla & Tahsilat</Text>
+              <TouchableOpacity onPress={() => setIsPayModalOpen(false)} style={styles.iosCloseCircle}>
+                <Ionicons name="close" size={20} color="#64748b" />
               </TouchableOpacity>
             </View>
+
             <ScrollView showsVerticalScrollIndicator={false}>
-              {/* KATALOGDAN PARÇA EKLEME BUTONU */}
               <TouchableOpacity
-                style={styles.catalogPickTriggerBtn}
+                style={styles.iosPickCatalogTrigger}
                 onPress={() => setIsPickPartModalOpen(true)}
               >
                 <Ionicons name="pricetag" size={16} color="#0284c7" />
-                <Text style={styles.catalogPickTriggerText}>📦 Fiyat Kataloğundan Parça / İşlem Ekle</Text>
+                <Text style={styles.iosPickCatalogTriggerText}>📦 Fiyat Kataloğundan Parça Seç</Text>
               </TouchableOpacity>
 
               <Text style={styles.inputLabel}>Değişen Parça / Yapılan İşlem</Text>
-              <TextInput
-                style={[styles.input, { height: 50 }]}
-                placeholder="Örn: Fan Motoru Değişimi, Genel Temizlik..."
-                placeholderTextColor="#94a3b8"
-                value={notesInput}
-                onChangeText={setNotesInput}
-              />
+              <TextInput style={styles.iosInput} placeholder="Örn: Fan Motoru Değişti" placeholderTextColor="#94a3b8" value={notesInput} onChangeText={setNotesInput} />
 
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.inputLabel}>İşçilik (TL)</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="1000"
-                    placeholderTextColor="#94a3b8"
-                    keyboardType="numeric"
-                    value={laborInput}
-                    onChangeText={setLaborInput}
-                  />
+                  <TextInput style={styles.iosInput} keyboardType="numeric" value={laborInput} onChangeText={setLaborInput} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.inputLabel}>Parça Ücreti (TL)</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="0"
-                    placeholderTextColor="#94a3b8"
-                    keyboardType="numeric"
-                    value={partsInput}
-                    onChangeText={setPartsInput}
-                  />
+                  <TextInput style={styles.iosInput} keyboardType="numeric" value={partsInput} onChangeText={setPartsInput} />
                 </View>
               </View>
 
-              {/* Eski / Yeni Parça Kamera Kanıtı */}
-              <Text style={styles.inputLabel}>📷 Değişen Parça Kanıtı (Garantili Servis)</Text>
+              <Text style={styles.inputLabel}>📷 Değişen Parça Fotoğrafı (Opsiyonel)</Text>
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                <TouchableOpacity style={styles.cameraBox} onPress={() => handlePickPhoto('old')}>
-                  {photoOld ? (
-                    <Image source={{ uri: photoOld }} style={styles.previewImage} />
-                  ) : (
-                    <>
-                      <Ionicons name="camera-outline" size={20} color="#64748b" />
-                      <Text style={styles.cameraBoxText}>Eski / Arızalı Parça</Text>
-                    </>
-                  )}
+                <TouchableOpacity style={styles.iosPhotoBox} onPress={() => handlePickPhoto('old')}>
+                  {photoOld ? <Image source={{ uri: photoOld }} style={styles.iosPhotoPreview} /> : <Text style={styles.iosPhotoText}>Eski Parça</Text>}
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.cameraBox} onPress={() => handlePickPhoto('new')}>
-                  {photoNew ? (
-                    <Image source={{ uri: photoNew }} style={styles.previewImage} />
-                  ) : (
-                    <>
-                      <Ionicons name="camera" size={20} color="#0284c7" />
-                      <Text style={styles.cameraBoxText}>Yeni Takılan Parça</Text>
-                    </>
-                  )}
+                <TouchableOpacity style={styles.iosPhotoBox} onPress={() => handlePickPhoto('new')}>
+                  {photoNew ? <Image source={{ uri: photoNew }} style={styles.iosPhotoPreview} /> : <Text style={styles.iosPhotoText}>Yeni Parça</Text>}
                 </TouchableOpacity>
               </View>
 
@@ -1590,46 +1506,46 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
                 {(['nakit', 'havale', 'pos'] as const).map(m => (
                   <TouchableOpacity
                     key={m}
-                    style={[styles.payMethodBtn, payMethod === m && styles.payMethodBtnActive]}
+                    style={[styles.iosPayMethodPill, payMethod === m && styles.iosPayMethodPillActive]}
                     onPress={() => setPayMethod(m)}
                   >
-                    <Text style={[styles.payMethodText, payMethod === m && styles.payMethodTextActive]}>
+                    <Text style={[styles.iosPayMethodText, payMethod === m && styles.iosPayMethodTextActive]}>
                       {m.toUpperCase()}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <View style={styles.totalBox}>
-                <Text style={{ fontWeight: '800', color: '#065f46' }}>Toplam Tahsil Edilecek:</Text>
-                <Text style={{ fontWeight: '900', color: '#065f46', fontSize: 20 }}>
+              <View style={styles.iosTotalAmountBox}>
+                <Text style={{ fontWeight: '700', color: '#065f46', fontSize: 13 }}>Toplam Tahsilat:</Text>
+                <Text style={{ fontWeight: '900', color: '#065f46', fontSize: 24 }}>
                   {((parseFloat(laborInput) || 0) + (parseFloat(partsInput) || 0)).toLocaleString('tr-TR')} ₺
                 </Text>
               </View>
 
-              <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: '#16a34a' }]} onPress={handleSavePayment}>
+              <TouchableOpacity style={[styles.applePrimaryBtn, { backgroundColor: '#16a34a' }]} onPress={handleSavePayment}>
                 <Ionicons name="checkmark-done" size={20} color="#fff" />
-                <Text style={styles.primaryBtnText}>Tahsilatı Onayla & İşi Bitir</Text>
+                <Text style={styles.applePrimaryBtnText}>Tahsilatı Onayla & İşi Bitir</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ===================== MODAL: USTA İÇİN KATALOGDAN PARÇA SEÇ ===================== */}
+      {/* ===================== MODAL: KATALOGDAN PARÇA SEÇ ===================== */}
       <Modal visible={isPickPartModalOpen} animationType="slide" transparent>
         <View style={styles.modalBg}>
-          <View style={[styles.modalSheet, { maxHeight: '85%' }]}>
-            <View style={styles.modalTop}>
-              <Text style={styles.modalHeading}>Katalogdan Parça / Hizmet Seç</Text>
-              <TouchableOpacity onPress={() => setIsPickPartModalOpen(false)}>
-                <Ionicons name="close" size={22} color="#64748b" />
+          <View style={[styles.iosModalSheet, { maxHeight: '85%' }]}>
+            <View style={styles.iosModalTop}>
+              <Text style={styles.iosModalTitle}>Katalogdan Parça Seç</Text>
+              <TouchableOpacity onPress={() => setIsPickPartModalOpen(false)} style={styles.iosCloseCircle}>
+                <Ionicons name="close" size={20} color="#64748b" />
               </TouchableOpacity>
             </View>
 
             <TextInput
-              style={[styles.input, { marginBottom: 10 }]}
-              placeholder="🔍 Parça veya işlem adı ara (örn: Fan, Bakım)..."
+              style={[styles.iosInput, { marginBottom: 12 }]}
+              placeholder="🔍 Parça veya işlem ara (Fan, Bakım)..."
               placeholderTextColor="#94a3b8"
               value={catalogSearch}
               onChangeText={setCatalogSearch}
@@ -1641,16 +1557,16 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
                 .map(item => (
                   <TouchableOpacity
                     key={item.id}
-                    style={styles.catalogPickItem}
+                    style={styles.iosCatalogPickRow}
                     onPress={() => handleSelectCatalogItemForJob(item)}
                   >
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.catalogPickName}>{item.name}</Text>
-                      <Text style={styles.catalogPickCat}>{item.category}</Text>
+                      <Text style={styles.iosCatalogPickName}>{item.name}</Text>
+                      <Text style={styles.iosCatalogPickCat}>{item.category}</Text>
                     </View>
-                    <View style={styles.catalogPickPriceBadge}>
-                      <Text style={styles.catalogPickPriceText}>{item.price} ₺</Text>
-                      <Ionicons name="add-circle" size={16} color="#0284c7" />
+                    <View style={styles.iosCatalogPickBadge}>
+                      <Text style={styles.iosCatalogPickPrice}>{item.price} ₺</Text>
+                      <Ionicons name="add" size={16} color="#0284c7" />
                     </View>
                   </TouchableOpacity>
                 ))}
@@ -1659,305 +1575,211 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
         </View>
       </Modal>
 
-      {/* ===================== MODAL: PATRON FİYAT KATALOĞU YÖNETİMİ ===================== */}
+      {/* ===================== MODAL: FİYAT KATALOĞU YÖNETİMİ ===================== */}
       <Modal visible={isCatalogModalOpen} animationType="slide" transparent>
         <View style={styles.modalBg}>
-          <View style={[styles.modalSheet, { maxHeight: '90%' }]}>
-            <View style={styles.modalTop}>
+          <View style={[styles.iosModalSheet, { maxHeight: '90%' }]}>
+            <View style={styles.iosModalTop}>
               <View>
-                <Text style={styles.modalHeading}>Fiyat & Parça Kataloğu</Text>
-                <Text style={{ fontSize: 11, color: '#64748b' }}>Saha ustalarınızın kullanacağı standart fiyat listesi</Text>
+                <Text style={styles.iosModalTitle}>Fiyat Kataloğu</Text>
+                <Text style={styles.iosModalSub}>Saha ustaları için sabit fiyat listesi</Text>
               </View>
-              <TouchableOpacity onPress={() => setIsCatalogModalOpen(false)}>
-                <Ionicons name="close" size={22} color="#64748b" />
+              <TouchableOpacity onPress={() => setIsCatalogModalOpen(false)} style={styles.iosCloseCircle}>
+                <Ionicons name="close" size={20} color="#64748b" />
               </TouchableOpacity>
             </View>
 
-            {/* Kategori Filtresi */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
               {(['Tümü', 'Kombi', 'Klima', 'Beyaz Eşya', 'Genel'] as const).map(cat => (
                 <TouchableOpacity
                   key={cat}
-                  style={[styles.catFilterPill, catalogFilter === cat && styles.catFilterPillActive]}
+                  style={[styles.iosFilterPill, catalogFilter === cat && styles.iosFilterPillActive]}
                   onPress={() => setCatalogFilter(cat)}
                 >
-                  <Text style={[styles.catFilterText, catalogFilter === cat && styles.catFilterTextActive]}>{cat}</Text>
+                  <Text style={[styles.iosFilterPillText, catalogFilter === cat && styles.iosFilterPillTextActive]}>{cat}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 350 }}>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
               <View style={{ gap: 8 }}>
                 {catalog
                   .filter(c => catalogFilter === 'Tümü' || c.category === catalogFilter)
                   .map(c => (
-                    <View key={c.id} style={styles.catalogManageRow}>
+                    <View key={c.id} style={styles.iosCatalogManageItem}>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.catalogItemName}>{c.name}</Text>
-                        <Text style={styles.catalogItemSub}>{c.category} {c.costPrice ? `• Parça Maliyeti: ${c.costPrice} ₺` : ''}</Text>
+                        <Text style={styles.iosCatalogPickName}>{c.name}</Text>
+                        <Text style={styles.iosCatalogPickCat}>{c.category} {c.costPrice ? `• Maliyet: ${c.costPrice} ₺` : ''}</Text>
                       </View>
-                      <View style={{ alignItems: 'flex-end', marginRight: 10 }}>
-                        <Text style={styles.catalogItemPrice}>{c.price} ₺</Text>
-                        <Text style={styles.catalogItemTarife}>Sabit Fiyat</Text>
-                      </View>
-                      <TouchableOpacity onPress={() => handleDeleteCatalogItem(c.id)}>
-                        <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                      <Text style={styles.iosCatalogPickPrice}>{c.price} ₺</Text>
+                      <TouchableOpacity onPress={() => handleDeleteCatalogItem(c.id)} style={{ marginLeft: 10 }}>
+                        <Ionicons name="trash-outline" size={18} color="#ef4444" />
                       </TouchableOpacity>
                     </View>
                   ))}
               </View>
             </ScrollView>
 
-            <TouchableOpacity style={styles.bigAddBtn} onPress={() => setIsAddCatalogItemOpen(true)}>
+            <TouchableOpacity style={styles.applePrimaryBtn} onPress={() => setIsAddCatalogItemOpen(true)}>
               <Ionicons name="add" size={18} color="#fff" />
-              <Text style={styles.bigAddBtnText}>+ Yeni Parça / Fiyat Ekle</Text>
+              <Text style={styles.applePrimaryBtnText}>Yeni Parça / Fiyat Ekle</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      {/* ===================== MODAL: YENİ KATALOG PARÇASI EKLE ===================== */}
+      {/* ===================== MODAL: YENİ KATALOG PARÇASI ===================== */}
       <Modal visible={isAddCatalogItemOpen} animationType="fade" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBg}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalTop}>
-              <Text style={styles.modalHeading}>Kataloğa Parça / İşlem Ekle</Text>
-              <TouchableOpacity onPress={() => setIsAddCatalogItemOpen(false)}>
-                <Ionicons name="close" size={22} color="#64748b" />
+          <View style={styles.iosModalSheet}>
+            <View style={styles.iosModalTop}>
+              <Text style={styles.iosModalTitle}>Yeni Parça Ekle</Text>
+              <TouchableOpacity onPress={() => setIsAddCatalogItemOpen(false)} style={styles.iosCloseCircle}>
+                <Ionicons name="close" size={20} color="#64748b" />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.inputLabel}>Parça veya İşlem Adı</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Örn: Genleşme Tankı Değişimi"
-              placeholderTextColor="#94a3b8"
-              value={newItemName}
-              onChangeText={setNewItemName}
-            />
+            <Text style={styles.inputLabel}>Parça / İşlem Adı</Text>
+            <TextInput style={styles.iosInput} placeholder="Örn: Genleşme Tankı Değişimi" placeholderTextColor="#94a3b8" value={newItemName} onChangeText={setNewItemName} />
 
             <Text style={styles.inputLabel}>Kategori</Text>
             <View style={{ flexDirection: 'row', gap: 6, marginBottom: 12 }}>
               {(['Kombi', 'Klima', 'Beyaz Eşya', 'Genel'] as const).map(cat => (
                 <TouchableOpacity
                   key={cat}
-                  style={[styles.payMethodBtn, newItemCat === cat && styles.payMethodBtnActive]}
+                  style={[styles.iosPayMethodPill, newItemCat === cat && styles.iosPayMethodPillActive]}
                   onPress={() => setNewItemCat(cat)}
                 >
-                  <Text style={[styles.payMethodText, newItemCat === cat && styles.payMethodTextActive]}>{cat}</Text>
+                  <Text style={[styles.iosPayMethodText, newItemCat === cat && styles.iosPayMethodTextActive]}>{cat}</Text>
                 </TouchableOpacity>
               ))}
             </View>
 
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.inputLabel}>Müşteri Satış Fiyatı (TL)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="2400"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="numeric"
-                  value={newItemPrice}
-                  onChangeText={setNewItemPrice}
-                />
+                <Text style={styles.inputLabel}>Satış Fiyatı (TL)</Text>
+                <TextInput style={styles.iosInput} placeholder="2400" placeholderTextColor="#94a3b8" keyboardType="numeric" value={newItemPrice} onChangeText={setNewItemPrice} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.inputLabel}>Şirket Maliyeti (TL)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="900"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="numeric"
-                  value={newItemCost}
-                  onChangeText={setNewItemCost}
-                />
+                <Text style={styles.inputLabel}>Maliyet (TL)</Text>
+                <TextInput style={styles.iosInput} placeholder="900" placeholderTextColor="#94a3b8" keyboardType="numeric" value={newItemCost} onChangeText={setNewItemCost} />
               </View>
             </View>
 
-            <TouchableOpacity style={styles.primaryBtn} onPress={handleAddCatalogItem}>
-              <Text style={styles.primaryBtnText}>Kataloğa Kaydet</Text>
+            <TouchableOpacity style={styles.applePrimaryBtn} onPress={handleAddCatalogItem}>
+              <Text style={styles.applePrimaryBtnText}>Kataloğa Kaydet</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ===================== MODAL: ABONELİK & PAYTR/İYZİCO ÖDEME ===================== */}
+      {/* ===================== MODAL: ABONELİK & ÖDEME ===================== */}
       <Modal visible={isSubscriptionModalOpen} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBg}>
-          <View style={[styles.modalSheet, { maxHeight: '92%' }]}>
-            <View style={styles.modalTop}>
+          <View style={[styles.iosModalSheet, { maxHeight: '92%' }]}>
+            <View style={styles.iosModalTop}>
               <View>
-                <Text style={styles.modalHeading}>
-                  {subModalStep === 'plans' ? 'Abonelik Paketleri' : subModalStep === 'checkout' ? '🔒 Güvenli Ödeme (PayTR / İyzico)' : '🎉 Tebrikler!'}
+                <Text style={styles.iosModalTitle}>
+                  {subModalStep === 'plans' ? 'Abonelik Paketleri' : subModalStep === 'checkout' ? '🔒 Güvenli Ödeme' : '🎉 Tebrikler!'}
                 </Text>
-                <Text style={{ fontSize: 11, color: '#64748b' }}>ServisJet Pro Saha Lisansı</Text>
+                <Text style={styles.iosModalSub}>ServisJet Lisans Yönetimi</Text>
               </View>
-              <TouchableOpacity onPress={() => setIsSubscriptionModalOpen(false)}>
-                <Ionicons name="close" size={22} color="#64748b" />
+              <TouchableOpacity onPress={() => setIsSubscriptionModalOpen(false)} style={styles.iosCloseCircle}>
+                <Ionicons name="close" size={20} color="#64748b" />
               </TouchableOpacity>
             </View>
 
             {subModalStep === 'plans' && (
               <ScrollView showsVerticalScrollIndicator={false}>
-                {/* Plan 1: Standart */}
                 <TouchableOpacity
-                  style={[styles.planCard, selectedPlan === 'standard' && styles.planCardActive]}
+                  style={[styles.iosPlanCard, selectedPlan === 'standard' && styles.iosPlanCardActive]}
                   onPress={() => setSelectedPlan('standard')}
                 >
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={styles.planTitle}>Standart Plan</Text>
-                    <Text style={styles.planPrice}>490 ₺ <Text style={{ fontSize: 12, fontWeight: 'normal', color: '#64748b' }}>/ay</Text></Text>
+                    <Text style={styles.iosPlanName}>Standart Plan</Text>
+                    <Text style={styles.iosPlanPrice}>490 ₺ <Text style={{ fontSize: 12, fontWeight: 'normal' }}>/ay</Text></Text>
                   </View>
-                  <Text style={styles.planSub}>1 Usta • Sınırsız Servis Fişi • WhatsApp Paylaşımı</Text>
+                  <Text style={styles.iosPlanSub}>1 Usta • Sınırsız Servis Fişi • WhatsApp Paylaşımı</Text>
                 </TouchableOpacity>
 
-                {/* Plan 2: Pro Saha (Önerilen) */}
                 <TouchableOpacity
-                  style={[styles.planCard, styles.planCardPro, selectedPlan === 'pro' && styles.planCardActive]}
+                  style={[styles.iosPlanCard, selectedPlan === 'pro' && styles.iosPlanCardActive]}
                   onPress={() => setSelectedPlan('pro')}
                 >
-                  <View style={styles.proPill}>
-                    <Text style={styles.proPillText}>EN ÇOK TERCİH EDİLEN</Text>
+                  <View style={styles.iosPopPill}>
+                    <Text style={styles.iosPopPillText}>ÖNERİLEN</Text>
                   </View>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                    <Text style={styles.planTitle}>Pro Saha Paketi</Text>
-                    <Text style={[styles.planPrice, { color: '#0284c7' }]}>890 ₺ <Text style={{ fontSize: 12, fontWeight: 'normal', color: '#64748b' }}>/ay</Text></Text>
+                    <Text style={styles.iosPlanName}>Pro Saha Paketi</Text>
+                    <Text style={[styles.iosPlanPrice, { color: '#0284c7' }]}>890 ₺ <Text style={{ fontSize: 12, fontWeight: 'normal' }}>/ay</Text></Text>
                   </View>
-                  <Text style={styles.planSub}>5 Usta • Yedek Parça Kataloğu • 11 Ay Bakım Hatırlatıcı • Muhasebe & Kasa Raporları</Text>
+                  <Text style={styles.iosPlanSub}>5 Usta • Parça Kataloğu • Kasa Raporları • Öncelikli Destek</Text>
                 </TouchableOpacity>
 
-                {/* Plan 3: Yıllık */}
                 <TouchableOpacity
-                  style={[styles.planCard, selectedPlan === 'yearly' && styles.planCardActive]}
+                  style={[styles.iosPlanCard, selectedPlan === 'yearly' && styles.iosPlanCardActive]}
                   onPress={() => setSelectedPlan('yearly')}
                 >
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <View>
-                      <Text style={styles.planTitle}>Yıllık Kurumsal</Text>
-                      <Text style={{ fontSize: 10, color: '#16a34a', fontWeight: '800' }}>2 AY ÜCRETSİZ</Text>
+                      <Text style={styles.iosPlanName}>Yıllık Kurumsal</Text>
+                      <Text style={{ fontSize: 10, color: '#16a34a', fontWeight: '800' }}>2 AY HEDİYE</Text>
                     </View>
-                    <Text style={styles.planPrice}>8.900 ₺ <Text style={{ fontSize: 12, fontWeight: 'normal', color: '#64748b' }}>/yıl</Text></Text>
+                    <Text style={styles.iosPlanPrice}>8.900 ₺ <Text style={{ fontSize: 12, fontWeight: 'normal' }}>/yıl</Text></Text>
                   </View>
-                  <Text style={styles.planSub}>Sınırsız Usta • Öncelikli 7/24 Telefon Destek • Özel Şirket Logosu</Text>
+                  <Text style={styles.iosPlanSub}>Sınırsız Usta • Özel Şirket Logosu • VIP 7/24 Destek</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.primaryBtn} onPress={() => setSubModalStep('checkout')}>
-                  <Text style={styles.primaryBtnText}>
-                    {selectedPlan === 'pro' ? 'Pro Pakete Geç (890 ₺/ay)' : selectedPlan === 'yearly' ? 'Yıllık Pakete Geç (8.900 ₺)' : 'Standart Pakete Geç (490 ₺)'}
-                  </Text>
-                  <Ionicons name="arrow-forward" size={18} color="#fff" />
+                <TouchableOpacity style={styles.applePrimaryBtn} onPress={() => setSubModalStep('checkout')}>
+                  <Text style={styles.applePrimaryBtnText}>Ödemeye Geç ➔</Text>
                 </TouchableOpacity>
               </ScrollView>
             )}
 
             {subModalStep === 'checkout' && (
               <ScrollView showsVerticalScrollIndicator={false}>
-                {/* Canlı Kredi Kartı Görseli */}
-                <View style={styles.creditCardVisual}>
+                <View style={styles.iosCreditCardVisual}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Ionicons name="card" size={28} color="#e0f2fe" />
-                    <Text style={styles.cardVisualBrand}>PayTR 3D Secure</Text>
+                    <Ionicons name="card" size={24} color="#bae6fd" />
+                    <Text style={{ color: '#93c5fd', fontSize: 11, fontWeight: '700' }}>PayTR 3D Secure</Text>
                   </View>
-                  <Text style={styles.cardVisualNumber}>{cardNumber || '•••• •••• •••• ••••'}</Text>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 16 }}>
-                    <View>
-                      <Text style={styles.cardVisualLabel}>KART SAHİBİ</Text>
-                      <Text style={styles.cardVisualHolder}>{cardHolder.toUpperCase() || 'AD SOYAD'}</Text>
-                    </View>
-                    <View>
-                      <Text style={styles.cardVisualLabel}>SON KULLANMA</Text>
-                      <Text style={styles.cardVisualExp}>{cardExp || 'AA/YY'}</Text>
-                    </View>
+                  <Text style={styles.iosCardNumber}>{cardNumber}</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    <Text style={styles.iosCardHolder}>{cardHolder.toUpperCase()}</Text>
+                    <Text style={styles.iosCardHolder}>{cardExp}</Text>
                   </View>
                 </View>
 
-                {/* Kart Bilgileri Formu */}
-                <Text style={styles.inputLabel}>Kart Üzerindeki İsim</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Ali Kaya"
-                  placeholderTextColor="#94a3b8"
-                  value={cardHolder}
-                  onChangeText={setCardHolder}
-                />
+                <Text style={styles.inputLabel}>Kart Sahibi</Text>
+                <TextInput style={styles.iosInput} value={cardHolder} onChangeText={setCardHolder} />
 
                 <Text style={styles.inputLabel}>Kart Numarası</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="4543 0000 0000 0000"
-                  placeholderTextColor="#94a3b8"
-                  keyboardType="numeric"
-                  value={cardNumber}
-                  onChangeText={setCardNumber}
-                />
+                <TextInput style={styles.iosInput} keyboardType="numeric" value={cardNumber} onChangeText={setCardNumber} />
 
                 <View style={{ flexDirection: 'row', gap: 10 }}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.inputLabel}>SKT (AA/YY)</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="11/28"
-                      placeholderTextColor="#94a3b8"
-                      value={cardExp}
-                      onChangeText={setCardExp}
-                    />
+                    <TextInput style={styles.iosInput} value={cardExp} onChangeText={setCardExp} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.inputLabel}>CVC / CVV</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="834"
-                      placeholderTextColor="#94a3b8"
-                      secureTextEntry
-                      keyboardType="numeric"
-                      value={cardCvv}
-                      onChangeText={setCardCvv}
-                    />
+                    <Text style={styles.inputLabel}>CVV</Text>
+                    <TextInput style={styles.iosInput} secureTextEntry keyboardType="numeric" value={cardCvv} onChangeText={setCardCvv} />
                   </View>
                 </View>
 
-                <View style={styles.securityRow}>
-                  <Ionicons name="lock-closed" size={14} color="#16a34a" />
-                  <Text style={styles.securityText}>256-Bit SSL ile şifrelenmiş güvenli ödeme altyapısı.</Text>
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.primaryBtn, { backgroundColor: '#16a34a', marginTop: 14 }]}
-                  onPress={handleProcessPayment}
-                  disabled={isPaying}
-                >
-                  {isPaying ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <>
-                      <Ionicons name="lock-closed" size={18} color="#fff" />
-                      <Text style={styles.primaryBtnText}>
-                        {selectedPlan === 'pro' ? '890 ₺ Güvenli Öde' : selectedPlan === 'yearly' ? '8.900 ₺ Güvenli Öde' : '490 ₺ Güvenli Öde'}
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity style={{ alignItems: 'center', marginTop: 10 }} onPress={() => setSubModalStep('plans')}>
-                  <Text style={{ color: '#64748b', fontSize: 12 }}>Paketleri Değiştir</Text>
+                <TouchableOpacity style={[styles.applePrimaryBtn, { backgroundColor: '#16a34a', marginTop: 14 }]} onPress={handleProcessPayment} disabled={isPaying}>
+                  {isPaying ? <ActivityIndicator color="#fff" /> : <Text style={styles.applePrimaryBtnText}>🔒 Güvenli Öde (3D Secure)</Text>}
                 </TouchableOpacity>
               </ScrollView>
             )}
 
             {subModalStep === 'success' && (
               <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-                <View style={styles.successCircle}>
-                  <Ionicons name="checkmark-sharp" size={40} color="#fff" />
-                </View>
-                <Text style={styles.successTitle}>Ödeme Başarılı!</Text>
-                <Text style={styles.successSub}>
-                  {currentUser.companyName} firmanız için {selectedPlan.toUpperCase()} Saha Paketi üyeliğiniz aktif edildi.
-                </Text>
-                <TouchableOpacity
-                  style={[styles.primaryBtn, { width: '100%', marginTop: 24 }]}
-                  onPress={() => setIsSubscriptionModalOpen(false)}
-                >
-                  <Text style={styles.primaryBtnText}>Kullanmaya Başla</Text>
+                <Ionicons name="checkmark-circle" size={60} color="#16a34a" />
+                <Text style={[styles.iosLargeTitle, { marginTop: 12, fontSize: 22 }]}>Ödeme Başarılı!</Text>
+                <Text style={styles.emptyCardSub}>{currentUser.companyName} için {selectedPlan.toUpperCase()} paketi aktif edildi.</Text>
+                <TouchableOpacity style={[styles.applePrimaryBtn, { width: '100%', marginTop: 20 }]} onPress={() => setIsSubscriptionModalOpen(false)}>
+                  <Text style={styles.applePrimaryBtnText}>Kullanmaya Başla</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -1968,228 +1790,213 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
   );
 }
 
+// ===================== APPLE SF-STYLE ARAYÜZ STİLLERİ =====================
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
+  scrollArea: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 110 },
+
+  // Toast
+  toastWrap: { position: 'absolute', top: 50, left: 16, right: 16, zIndex: 9999, backgroundColor: '#fff', borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 8, borderWidth: 1, borderColor: '#e2e8f0' },
+  toastTitle: { color: '#0f172a', fontWeight: '800', fontSize: 13 },
+  toastMessage: { color: '#64748b', fontSize: 11, marginTop: 2 },
+
+  // Apple Büyük Başlık Satırı
+  appleHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 },
+  iosLargeTitle: { fontSize: 28, fontWeight: '900', color: '#0f172a', letterSpacing: -0.5 },
+  iosSubtitle: { fontSize: 13, color: '#64748b', marginTop: 2, fontWeight: '500' },
+  appleAddHeaderBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#0284c7', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, shadowColor: '#0284c7', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 3 },
+  appleAddHeaderText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+
+  // Segmented Filtre Barı
+  iosFilterBar: { flexDirection: 'row', backgroundColor: '#e2e8f0', borderRadius: 12, padding: 4, marginBottom: 16 },
+  iosFilterPill: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 9 },
+  iosFilterPillActive: { backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 3, elevation: 1 },
+  iosFilterPillText: { fontSize: 12, fontWeight: '600', color: '#64748b' },
+  iosFilterPillTextActive: { color: '#0f172a', fontWeight: '800' },
+
+  // Apple İş Kartı
+  iosJobCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.04, shadowRadius: 10, elevation: 2, borderWidth: 1, borderColor: '#f1f5f9' },
+  iosJobCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  deviceBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  badgeKombi: { backgroundColor: '#e0f2fe' },
+  badgeKlima: { backgroundColor: '#f3e8ff' },
+  deviceBadgeText: { fontSize: 11, fontWeight: '800' },
+  deviceKombiText: { color: '#0284c7' },
+  deviceKlimaText: { color: '#9333ea' },
+  iosJobCode: { fontSize: 12, fontWeight: '700', color: '#94a3b8' },
+  statusTag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  statusTagActive: { backgroundColor: '#fffbeb' },
+  statusTagDone: { backgroundColor: '#ecfdf5' },
+  statusTagText: { fontSize: 10, fontWeight: '800' },
+  statusTagTextActive: { color: '#b45309' },
+  statusTagTextDone: { color: '#15803d' },
+
+  iosCustName: { fontSize: 17, fontWeight: '800', color: '#0f172a' },
+  iosLocationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  iosLocationText: { fontSize: 12, color: '#64748b', fontWeight: '500' },
+  iosFaultText: { fontSize: 13, color: '#334155', marginTop: 8, lineHeight: 18 },
+
+  iosCardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f8fafc' },
+  iosTechLabel: { fontSize: 12, color: '#64748b', fontWeight: '600' },
+  iosPriceText: { fontSize: 15, fontWeight: '900', color: '#16a34a' },
+  iosReceiptBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#ecfdf5', paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, borderWidth: 1, borderColor: '#a7f3d0' },
+  iosReceiptBtnText: { color: '#16a34a', fontSize: 11, fontWeight: '800' },
+  iosCallBtnMini: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#f0f9ff', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
+  iosCallBtnMiniText: { color: '#0284c7', fontSize: 11, fontWeight: '700' },
+
+  // Ekip
+  iosInviteCard: { backgroundColor: '#0f172a', borderRadius: 20, padding: 18, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  iosInviteLabel: { fontSize: 10, fontWeight: '800', color: '#94a3b8', letterSpacing: 1 },
+  iosInviteCode: { fontSize: 26, fontWeight: '900', color: '#38bdf8', letterSpacing: 2, marginTop: 2 },
+  iosShareCodeBtn: { backgroundColor: '#16a34a', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
+  iosShareCodeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+
+  iosTechItemCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
+  iosTechAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#e0f2fe', justifyContent: 'center', alignItems: 'center' },
+  iosTechAvatarText: { fontSize: 16, fontWeight: '900', color: '#0284c7' },
+  iosTechName: { fontSize: 15, fontWeight: '800', color: '#0f172a' },
+  iosTechSub: { fontSize: 12, color: '#64748b', marginTop: 2 },
+  iosCallIconBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#f0f9ff', justifyContent: 'center', alignItems: 'center' },
+
+  // Kasa
+  iosWalletCard: { backgroundColor: '#0f172a', borderRadius: 24, padding: 22, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.15, shadowRadius: 16, elevation: 4 },
+  iosWalletLabel: { fontSize: 11, fontWeight: '800', color: '#94a3b8', letterSpacing: 1 },
+  iosWalletVal: { fontSize: 34, fontWeight: '900', color: '#fff', marginVertical: 6 },
+  iosWalletBreakdown: { flexDirection: 'row', marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#334155' },
+  iosWalletBreakItem: { flex: 1, alignItems: 'center' },
+  iosWalletBreakDivider: { width: 1, height: '100%', backgroundColor: '#334155' },
+  iosBreakLabel: { fontSize: 11, color: '#94a3b8', fontWeight: '600' },
+  iosBreakVal: { fontSize: 16, fontWeight: '800', color: '#fff', marginTop: 2 },
+  iosSectionTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a' },
+  iosCashRow: { backgroundColor: '#fff', borderRadius: 16, padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
+  iosCashCust: { fontSize: 14, fontWeight: '800', color: '#0f172a' },
+  iosCashSub: { fontSize: 12, color: '#64748b', marginTop: 2 },
+  iosCashPrice: { fontSize: 15, fontWeight: '900', color: '#16a34a' },
+
+  // Usta Hero Card
+  iosHeroTaskCard: { backgroundColor: '#fff', borderRadius: 24, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 4, borderWidth: 1, borderColor: '#e0f2fe' },
+  iosHeroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  iosHeroBadge: { backgroundColor: '#0284c7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  iosHeroBadgeText: { color: '#fff', fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
+  iosHeroCode: { fontSize: 13, fontWeight: '800', color: '#94a3b8' },
+  iosHeroCust: { fontSize: 22, fontWeight: '900', color: '#0f172a', marginTop: 4 },
+  iosHeroDevice: { fontSize: 14, fontWeight: '700', color: '#0284c7', marginTop: 2 },
+
+  iosMapBanner: { backgroundColor: '#f8fafc', borderRadius: 14, padding: 12, flexDirection: 'row', alignItems: 'center', marginVertical: 12, borderWidth: 1, borderColor: '#e2e8f0' },
+  iosMapDistrict: { fontSize: 13, fontWeight: '800', color: '#0f172a' },
+  iosMapAddress: { fontSize: 11, color: '#64748b', marginTop: 1 },
+  iosMapLink: { fontSize: 11, fontWeight: '800', color: '#0284c7' },
+
+  iosFaultBox: { backgroundColor: '#fffbeb', borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  iosFaultBoxText: { fontSize: 12, color: '#b45309', flex: 1, fontWeight: '500' },
+
+  iosActionBtnCall: { flex: 1, backgroundColor: '#0f172a', borderRadius: 14, paddingVertical: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
+  iosActionBtnWa: { flex: 1, backgroundColor: '#16a34a', borderRadius: 14, paddingVertical: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
+  iosActionBtnText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+
+  iosBigStepBtn: { borderRadius: 16, paddingVertical: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 4 },
+  iosBigStepBtnText: { color: '#fff', fontSize: 15, fontWeight: '900' },
+
+  // Profil
+  iosProfileCard: { backgroundColor: '#fff', borderRadius: 20, padding: 22, alignItems: 'center', marginBottom: 16, borderWidth: 1, borderColor: '#f1f5f9' },
+  iosProfileAvatarWrap: { width: 68, height: 68, borderRadius: 34, backgroundColor: '#0284c7', justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+  iosProfileAvatarInitial: { fontSize: 26, fontWeight: '900', color: '#fff' },
+  iosProfileName: { fontSize: 18, fontWeight: '800', color: '#0f172a' },
+  iosProfileRole: { fontSize: 12, color: '#64748b', marginTop: 2 },
+
+  iosMenuGroup: { backgroundColor: '#fff', borderRadius: 20, paddingHorizontal: 16, borderWidth: 1, borderColor: '#f1f5f9', marginBottom: 16 },
+  iosMenuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f8fafc' },
+  iosMenuIconWrap: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  iosMenuTitle: { fontSize: 14, fontWeight: '700', color: '#0f172a' },
+  iosMenuSub: { fontSize: 11, color: '#64748b', marginTop: 1 },
+
+  iosLogoutBtn: { backgroundColor: '#fef2f2', borderRadius: 16, paddingVertical: 14, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
+  iosLogoutText: { color: '#ef4444', fontSize: 14, fontWeight: '800' },
+
+  // Alt Tab Bar
+  appleTabBar: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.95)', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingVertical: 10, paddingBottom: Platform.OS === 'ios' ? 24 : 10, position: 'absolute', bottom: 0, left: 0, right: 0 },
+  appleTabItem: { flex: 1, alignItems: 'center', gap: 3 },
+  appleTabText: { fontSize: 10, fontWeight: '600', color: '#94a3b8' },
+  appleTabTextActive: { color: '#0284c7', fontWeight: '800' },
+
+  // Modallar
+  modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  iosModalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 22, maxHeight: '90%' },
+  iosModalTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  iosModalTitle: { fontSize: 18, fontWeight: '900', color: '#0f172a' },
+  iosModalSub: { fontSize: 11, color: '#64748b' },
+  iosCloseCircle: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#f1f5f9', justifyContent: 'center', alignItems: 'center' },
+
+  inputLabel: { fontSize: 12, fontWeight: '700', color: '#475569', marginBottom: 6, marginTop: 10 },
+  iosInput: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: '#0f172a' },
+  applePrimaryBtn: { backgroundColor: '#0284c7', borderRadius: 14, paddingVertical: 14, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 18 },
+  applePrimaryBtnText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+
+  iosMemoryPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#f0f9ff', borderRadius: 10, padding: 10, marginVertical: 6 },
+  iosMemoryText: { color: '#0284c7', fontSize: 11, fontWeight: '700' },
+
+  iosTechSelectPill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: '#f1f5f9', marginRight: 6 },
+  iosTechSelectPillActive: { backgroundColor: '#0284c7' },
+  iosTechSelectText: { fontSize: 12, fontWeight: '700', color: '#64748b' },
+  iosTechSelectTextActive: { color: '#fff' },
+
+  iosPickCatalogTrigger: { backgroundColor: '#f0f9ff', borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 8 },
+  iosPickCatalogTriggerText: { color: '#0284c7', fontWeight: '800', fontSize: 13 },
+
+  iosPhotoBox: { flex: 1, height: 75, backgroundColor: '#f8fafc', borderWidth: 1.5, borderColor: '#cbd5e1', borderStyle: 'dashed', borderRadius: 12, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  iosPhotoText: { fontSize: 11, fontWeight: '700', color: '#64748b' },
+  iosPhotoPreview: { width: '100%', height: '100%' },
+
+  iosPayMethodPill: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: '#e2e8f0', alignItems: 'center', backgroundColor: '#f8fafc' },
+  iosPayMethodPillActive: { backgroundColor: '#0284c7', borderColor: '#0284c7' },
+  iosPayMethodText: { fontSize: 11, fontWeight: '800', color: '#64748b' },
+  iosPayMethodTextActive: { color: '#fff' },
+
+  iosTotalAmountBox: { backgroundColor: '#ecfdf5', borderRadius: 14, padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 12 },
+
+  // Katalog Seçim Listesi
+  iosCatalogPickRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#f8fafc', borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 8 },
+  iosCatalogPickName: { fontSize: 13, fontWeight: '800', color: '#0f172a' },
+  iosCatalogPickCat: { fontSize: 11, color: '#64748b', marginTop: 2 },
+  iosCatalogPickBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#e0f2fe', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  iosCatalogPickPrice: { fontSize: 13, fontWeight: '900', color: '#0284c7' },
+  iosCatalogManageItem: { flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: '#f8fafc', borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0' },
+
+  // Abonelik Paket Kartları
+  iosPlanCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1.5, borderColor: '#e2e8f0', marginBottom: 10 },
+  iosPlanCardActive: { borderColor: '#0284c7', backgroundColor: '#f0f9ff' },
+  iosPopPill: { alignSelf: 'flex-start', backgroundColor: '#0284c7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  iosPopPillText: { color: '#fff', fontSize: 9, fontWeight: '900' },
+  iosPlanName: { fontSize: 15, fontWeight: '800', color: '#0f172a' },
+  iosPlanPrice: { fontSize: 17, fontWeight: '900', color: '#0f172a' },
+  iosPlanSub: { fontSize: 11, color: '#64748b', marginTop: 4 },
+
+  iosCreditCardVisual: { backgroundColor: '#0f172a', borderRadius: 18, padding: 18, marginBottom: 14 },
+  iosCardNumber: { color: '#fff', fontSize: 18, fontWeight: '900', letterSpacing: 2, marginVertical: 14 },
+  iosCardHolder: { color: '#e2e8f0', fontSize: 11, fontWeight: '700' },
+
+  // Auth Stilleri
   authContainer: { flex: 1, backgroundColor: '#f8fafc' },
   authScroll: { padding: 24, justifyContent: 'center', minHeight: '100%' },
   authHeader: { alignItems: 'center', marginBottom: 28 },
-  logoBadge: { width: 64, height: 64, borderRadius: 20, backgroundColor: '#0284c7', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  authBrand: { fontSize: 32, fontWeight: '900', color: '#0f172a' },
-  authSub: { fontSize: 13, color: '#64748b', textAlign: 'center', marginTop: 4 },
+  appleLogoWrap: { width: 64, height: 64, borderRadius: 22, backgroundColor: '#e0f2fe', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  appleBrand: { fontSize: 32, fontWeight: '900', color: '#0f172a' },
+  appleSub: { fontSize: 13, color: '#64748b', marginTop: 4 },
+  segmentedControl: { flexDirection: 'row', backgroundColor: '#e2e8f0', borderRadius: 12, padding: 4, marginBottom: 18 },
+  segmentBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 9 },
+  segmentBtnActive: { backgroundColor: '#fff' },
+  segmentText: { fontSize: 13, fontWeight: '600', color: '#64748b' },
+  segmentTextActive: { color: '#0f172a', fontWeight: '800' },
+  appleCard: { backgroundColor: '#fff', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#f1f5f9' },
+  roleSelectPill: { flex: 1, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0', alignItems: 'center', gap: 4 },
+  roleSelectPillActive: { borderColor: '#0284c7', backgroundColor: '#f0f9ff' },
+  roleSelectText: { fontSize: 11, fontWeight: '700', color: '#64748b' },
+  roleSelectTextActive: { color: '#0284c7' },
+  iosDemoCard: { marginTop: 18, padding: 12, backgroundColor: '#f8fafc', borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0' },
+  iosDemoTitle: { fontSize: 11, fontWeight: '800', color: '#64748b', marginBottom: 6 },
+  iosDemoRow: { fontSize: 12, color: '#0284c7', fontWeight: '700', marginVertical: 2 },
 
-  toggleRow: { flexDirection: 'row', backgroundColor: '#e2e8f0', borderRadius: 12, padding: 4, marginBottom: 20 },
-  toggleBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
-  toggleBtnActive: { backgroundColor: '#fff' },
-  toggleText: { fontSize: 13, fontWeight: '700', color: '#64748b' },
-  toggleTextActive: { color: '#0f172a' },
-
-  formCard: { backgroundColor: '#fff', borderRadius: 16, padding: 20, borderWidth: 1, borderColor: '#f1f5f9' },
-  roleRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  roleBtn: { flex: 1, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#e2e8f0', alignItems: 'center', gap: 4 },
-  roleBtnActive: { borderColor: '#0284c7', backgroundColor: '#f0f9ff' },
-  roleText: { fontSize: 11, fontWeight: '700', color: '#64748b', textAlign: 'center' },
-  roleTextActive: { color: '#0284c7' },
-
-  inputLabel: { fontSize: 12, fontWeight: '700', color: '#475569', marginBottom: 6, marginTop: 10 },
-  input: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: '#0f172a' },
-  primaryBtn: { backgroundColor: '#0284c7', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 14, borderRadius: 12, marginTop: 18 },
-  primaryBtnText: { color: '#fff', fontSize: 14, fontWeight: '800' },
-
-  demoBox: { marginTop: 20, padding: 12, backgroundColor: '#f0f9ff', borderRadius: 10, borderWidth: 1, borderColor: '#bae6fd' },
-  demoTitle: { fontSize: 11, fontWeight: '800', color: '#0369a1', marginBottom: 6 },
-  demoLink: { fontSize: 12, color: '#0284c7', fontWeight: '700', marginVertical: 2 },
-
-  // Toast
-  toastContainer: { position: 'absolute', top: 50, left: 16, right: 16, zIndex: 9999, backgroundColor: '#0f172a', borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10, elevation: 8 },
-  toastTitle: { color: '#fff', fontWeight: '800', fontSize: 13 },
-  toastDesc: { color: '#94a3b8', fontSize: 11, marginTop: 2 },
-
-  // Üst Başlık
-  topBarClean: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  firmTitle: { fontSize: 18, fontWeight: '900', color: '#0f172a' },
-  firmUserSub: { fontSize: 12, color: '#64748b', marginTop: 1 },
-  headerKatalogBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#f0f9ff', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#bae6fd' },
-  headerKatalogText: { fontSize: 11, fontWeight: '700', color: '#0284c7' },
-
-  // Deneme / Abonelik Bannerı
-  trialContainer: { paddingHorizontal: 16, paddingTop: 10, backgroundColor: '#fff' },
-  trialBanner: { backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fef3c7', borderRadius: 12, padding: 10 },
-  trialTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  trialText: { fontSize: 12, color: '#92400e' },
-  upgradeBadge: { backgroundColor: '#d97706', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  upgradeBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
-  trialBarBg: { height: 4, backgroundColor: '#fde68a', borderRadius: 2, marginTop: 6, overflow: 'hidden' },
-  trialBarFill: { height: '100%', backgroundColor: '#d97706', borderRadius: 2 },
-
-  activePlanBanner: { backgroundColor: '#ecfdf5', borderWidth: 1, borderColor: '#a7f3d0', borderRadius: 10, padding: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  activePlanText: { fontSize: 11, color: '#065f46' },
-
-  tabContent: { padding: 16, paddingBottom: 100 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: '900', color: '#0f172a' },
-  actionPillBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#0284c7', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  actionPillText: { color: '#fff', fontSize: 12, fontWeight: '800' },
-
-  // Kartlar
-  cleanJobCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#f1f5f9' },
-  cleanJobHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  cleanJobCode: { fontSize: 12, fontWeight: '800', color: '#0284c7' },
-  badgePill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
-  badgeSuccess: { backgroundColor: '#ecfdf5' },
-  badgeProgress: { backgroundColor: '#fef3c7' },
-  badgeText: { fontSize: 10, fontWeight: '800' },
-  badgeTextSuccess: { color: '#059669' },
-  badgeTextProgress: { color: '#d97706' },
-
-  cleanJobCust: { fontSize: 14, fontWeight: '800', color: '#0f172a' },
-  cleanJobDesc: { fontSize: 12, color: '#64748b', marginTop: 2 },
-  cleanJobFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, borderTopWidth: 1, borderTopColor: '#f8fafc', paddingTop: 8 },
-  cleanJobTech: { fontSize: 11, color: '#64748b' },
-  cleanJobPrice: { fontSize: 14, fontWeight: '900', color: '#059669' },
-
-  waReceiptMiniBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#ecfdf5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: '#a7f3d0' },
-  waReceiptMiniText: { color: '#059669', fontSize: 11, fontWeight: '800' },
-  proofThumb: { width: 44, height: 44, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' },
-
-  // Ekip
-  inviteCodeBox: { backgroundColor: '#0f172a', borderRadius: 16, padding: 18, marginBottom: 16 },
-  inviteLabel: { color: '#94a3b8', fontSize: 11, fontWeight: '700' },
-  inviteCode: { color: '#38bdf8', fontSize: 28, fontWeight: '900', letterSpacing: 2, marginVertical: 4 },
-  inviteSub: { color: '#cbd5e1', fontSize: 11 },
-
-  cleanTechCard: { backgroundColor: '#fff', borderRadius: 14, padding: 12, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
-  techIconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#e0f2fe', justifyContent: 'center', alignItems: 'center' },
-  cleanTechName: { fontSize: 14, fontWeight: '800', color: '#0f172a' },
-  cleanTechSub: { fontSize: 11, color: '#64748b', marginTop: 2 },
-  callCircleBtn: { padding: 8, borderRadius: 20, backgroundColor: '#f0f9ff' },
-  bigAddBtn: { backgroundColor: '#0284c7', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 14, borderRadius: 14, marginTop: 16 },
-  bigAddBtnText: { color: '#fff', fontSize: 14, fontWeight: '800' },
-
-  // Kasa
-  totalCashCard: { backgroundColor: '#ecfdf5', borderWidth: 1, borderColor: '#a7f3d0', borderRadius: 20, padding: 20, alignItems: 'center' },
-  totalCashLabel: { fontSize: 12, fontWeight: '700', color: '#065f46' },
-  totalCashVal: { fontSize: 32, fontWeight: '900', color: '#065f46', marginVertical: 4 },
-  totalCashSub: { fontSize: 12, color: '#047857' },
-  cashMiniBox: { flex: 1, backgroundColor: '#fff', padding: 14, borderRadius: 14, borderWidth: 1, borderColor: '#e2e8f0', alignItems: 'center' },
-  cashMiniLabel: { fontSize: 11, color: '#64748b', fontWeight: '600' },
-  cashMiniVal: { fontSize: 16, fontWeight: '900', color: '#0f172a', marginTop: 2 },
-  cashRowCard: { backgroundColor: '#fff', padding: 12, borderRadius: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
-  cashCustName: { fontSize: 13, fontWeight: '800', color: '#0f172a' },
-  cashCustSub: { fontSize: 11, color: '#64748b', marginTop: 2 },
-  cashAmountText: { fontSize: 15, fontWeight: '900', color: '#059669' },
-  receiptSmallBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#ecfdf5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  receiptSmallText: { fontSize: 10, fontWeight: '800', color: '#059669' },
-
-  // Bakım Hatırlatma
-  maintenanceCard: { backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fef3c7', borderRadius: 16, padding: 14, marginBottom: 16 },
-  maintenanceTitle: { fontSize: 13, fontWeight: '900', color: '#92400e' },
-  maintenanceDesc: { fontSize: 11, color: '#b45309', marginTop: 2, marginBottom: 10 },
-  maintenanceRow: { backgroundColor: '#fff', borderRadius: 10, padding: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
-  waOfferBtn: { backgroundColor: '#16a34a', flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
-  waOfferText: { color: '#fff', fontSize: 11, fontWeight: '800' },
-
-  matchedCustomerBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#e0f2fe', padding: 10, borderRadius: 10, marginVertical: 6 },
-  cameraBox: { flex: 1, height: 75, backgroundColor: '#f8fafc', borderWidth: 1.5, borderColor: '#cbd5e1', borderStyle: 'dashed', borderRadius: 12, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
-  cameraBoxText: { fontSize: 10, fontWeight: '700', color: '#64748b', marginTop: 4, textAlign: 'center' },
-  previewImage: { width: '100%', height: '100%' },
-
-  // Profil
-  profileBox: { backgroundColor: '#fff', borderRadius: 20, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: '#f1f5f9', marginBottom: 16 },
-  profileAvatar: { width: 68, height: 68, borderRadius: 24, backgroundColor: '#e0f2fe', justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
-  profileName: { fontSize: 18, fontWeight: '900', color: '#0f172a' },
-  profilePhone: { fontSize: 13, color: '#64748b', marginTop: 2 },
-  profileBadge: { backgroundColor: '#f1f5f9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, marginTop: 8 },
-  profileBadgeText: { fontSize: 10, fontWeight: '800', color: '#475569' },
-  profileActionCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
-  profileIconWrap: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  cardSettingsList: { backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#f1f5f9', gap: 14 },
-  settingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  settingLabel: { fontSize: 13, color: '#64748b', fontWeight: '600' },
-  settingVal: { fontSize: 13, fontWeight: '700', color: '#0f172a' },
-  logoutFullBtn: { backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 14, borderRadius: 14, marginTop: 20 },
-  logoutFullText: { color: '#ef4444', fontSize: 14, fontWeight: '800' },
-
-  // Bottom Tab
-  bottomTabBar: { flexDirection: 'row', backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingVertical: 8, paddingBottom: Platform.OS === 'ios' ? 20 : 8 },
-  tabItem: { flex: 1, alignItems: 'center', gap: 2 },
-  tabItemText: { fontSize: 10, fontWeight: '700', color: '#94a3b8' },
-  tabItemTextActive: { color: '#0284c7' },
-
-  // Usta Görev
-  activeJobBox: { backgroundColor: '#fff', borderRadius: 20, padding: 18, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
-  activeJobPill: { backgroundColor: '#0284c7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  activeJobPillText: { color: '#fff', fontSize: 10, fontWeight: '900' },
-  activeCustTitle: { fontSize: 20, fontWeight: '900', color: '#0f172a', marginTop: 4 },
-  activeDeviceTitle: { fontSize: 13, fontWeight: '700', color: '#0284c7', marginTop: 2, marginBottom: 12 },
-  navBox: { flexDirection: 'row', backgroundColor: '#f8fafc', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 10 },
-  faultNotice: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fef3c7', padding: 10, borderRadius: 10, marginBottom: 12 },
-  btnCall: { flex: 1, backgroundColor: '#0f172a', paddingVertical: 12, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
-  btnWa: { flex: 1, backgroundColor: '#16a34a', paddingVertical: 12, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
-  btnActionText: { color: '#fff', fontWeight: '800', fontSize: 13 },
-  bigStepBtn: { paddingVertical: 16, borderRadius: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
-  bigStepBtnText: { color: '#fff', fontSize: 15, fontWeight: '900' },
-  receiptBigBtn: { backgroundColor: '#16a34a', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, paddingVertical: 12, borderRadius: 12, marginTop: 6 },
-  receiptBigBtnText: { color: '#fff', fontSize: 12, fontWeight: '800' },
-
-  emptyBox: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: 20 },
-  emptyTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a', marginTop: 12 },
-  emptySub: { fontSize: 12, color: '#64748b', textAlign: 'center', marginTop: 4 },
-
-  // Modallar
-  modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '90%' },
-  modalTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  modalHeading: { fontSize: 17, fontWeight: '900', color: '#0f172a' },
-  techPill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#f8fafc', marginRight: 6 },
-  techPillActive: { backgroundColor: '#0284c7', borderColor: '#0284c7' },
-  techPillText: { fontSize: 12, fontWeight: '700', color: '#475569' },
-  techPillTextActive: { color: '#fff' },
-  totalBox: { backgroundColor: '#ecfdf5', borderRadius: 10, padding: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 12 },
-  payMethodBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0', alignItems: 'center', backgroundColor: '#f8fafc' },
-  payMethodBtnActive: { backgroundColor: '#0284c7', borderColor: '#0284c7' },
-  payMethodText: { fontSize: 11, fontWeight: '800', color: '#64748b' },
-  payMethodTextActive: { color: '#fff' },
-
-  // Katalog UI Stilleri
-  katalogQuickBanner: { backgroundColor: '#f0f9ff', borderWidth: 1, borderColor: '#bae6fd', borderRadius: 14, padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 8 },
-  katalogIconCircle: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#e0f2fe', justifyContent: 'center', alignItems: 'center' },
-  catalogPickTriggerBtn: { backgroundColor: '#f0f9ff', borderWidth: 1, borderColor: '#bae6fd', borderRadius: 10, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 10 },
-  catalogPickTriggerText: { color: '#0284c7', fontWeight: '800', fontSize: 13 },
-  catFilterPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, backgroundColor: '#f1f5f9', marginRight: 6 },
-  catFilterPillActive: { backgroundColor: '#0284c7' },
-  catFilterText: { fontSize: 12, fontWeight: '700', color: '#64748b' },
-  catFilterTextActive: { color: '#fff' },
-  catalogManageRow: { flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: '#f8fafc', borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0' },
-  catalogItemName: { fontSize: 13, fontWeight: '800', color: '#0f172a' },
-  catalogItemSub: { fontSize: 11, color: '#64748b', marginTop: 2 },
-  catalogItemPrice: { fontSize: 14, fontWeight: '900', color: '#0284c7' },
-  catalogItemTarife: { fontSize: 9, color: '#64748b' },
-  catalogPickItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, backgroundColor: '#f8fafc', borderRadius: 10, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 8 },
-  catalogPickName: { fontSize: 13, fontWeight: '800', color: '#0f172a' },
-  catalogPickCat: { fontSize: 10, color: '#64748b', marginTop: 2 },
-  catalogPickPriceBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#e0f2fe', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  catalogPickPriceText: { fontSize: 12, fontWeight: '800', color: '#0284c7' },
-
-  // Abonelik & Ödeme UI Stilleri
-  planCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, borderWidth: 1.5, borderColor: '#e2e8f0', marginBottom: 12 },
-  planCardActive: { borderColor: '#0284c7', backgroundColor: '#f0f9ff' },
-  planCardPro: { borderColor: '#38bdf8' },
-  proPill: { alignSelf: 'flex-start', backgroundColor: '#0284c7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
-  proPillText: { color: '#fff', fontSize: 9, fontWeight: '900' },
-  planTitle: { fontSize: 16, fontWeight: '900', color: '#0f172a' },
-  planPrice: { fontSize: 18, fontWeight: '900', color: '#0f172a' },
-  planSub: { fontSize: 11, color: '#64748b', marginTop: 6, lineHeight: 16 },
-
-  creditCardVisual: { backgroundColor: '#0f172a', borderRadius: 16, padding: 20, marginBottom: 16 },
-  cardVisualBrand: { color: '#38bdf8', fontSize: 12, fontWeight: '800' },
-  cardVisualNumber: { color: '#fff', fontSize: 18, fontWeight: '900', letterSpacing: 2, marginVertical: 18 },
-  cardVisualLabel: { color: '#64748b', fontSize: 9, fontWeight: '700' },
-  cardVisualHolder: { color: '#e2e8f0', fontSize: 12, fontWeight: '800', marginTop: 2 },
-  cardVisualExp: { color: '#e2e8f0', fontSize: 12, fontWeight: '800', marginTop: 2 },
-
-  securityRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, justifyContent: 'center' },
-  securityText: { fontSize: 11, color: '#64748b' },
-  successCircle: { width: 70, height: 70, borderRadius: 35, backgroundColor: '#16a34a', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-  successTitle: { fontSize: 22, fontWeight: '900', color: '#0f172a' },
-  successSub: { fontSize: 13, color: '#64748b', textAlign: 'center', marginTop: 6, paddingHorizontal: 20 }
+  emptyCard: { backgroundColor: '#fff', borderRadius: 20, padding: 32, alignItems: 'center', borderWidth: 1, borderColor: '#f1f5f9', marginTop: 20 },
+  emptyCardTitle: { fontSize: 15, fontWeight: '800', color: '#0f172a', marginTop: 8 },
+  emptyCardSub: { fontSize: 12, color: '#64748b', textAlign: 'center', marginTop: 4 }
 });
