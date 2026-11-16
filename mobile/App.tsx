@@ -160,10 +160,13 @@ export default function App() {
   const [jobs, setJobs] = useState<Job[]>(initialJobs);
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'jobs' | 'team' | 'cash' | 'task' | 'history' | 'profile'>('jobs');
+  // Patron için: jobs | customers | team | profile
+  // Usta için: task | history | profile
+  const [activeTab, setActiveTab] = useState<'jobs' | 'customers' | 'team' | 'task' | 'history' | 'profile'>('jobs');
 
-  // Filtreler (Apple Segmented Control)
+  // Filtreler
   const [jobFilter, setJobFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [customerSearch, setCustomerSearch] = useState('');
 
   // Bildirim Toast
   const [inAppToast, setInAppToast] = useState<{ title: string; message: string } | null>(null);
@@ -226,7 +229,7 @@ export default function App() {
     initStorage();
   }, []);
 
-  // GERÇEK ZAMANLI REALTIME DİNLEYİCİ
+  // GERÇEK ZAMANLI REALTIME
   useEffect(() => {
     if (!currentUser?.companyId || !supabase) return;
 
@@ -331,6 +334,17 @@ export default function App() {
     Alert.alert('Hafıza Yüklendi', `${matchedOldCustomer.customerName} adres ve cihaz bilgileri otomatik dolduruldu.`);
   };
 
+  // Müşteriler Sekmesinden Hızlı İş Açma
+  const handleOpenJobForCustomer = (cust: { name: string; phone: string; district: string; address: string; device: string }) => {
+    setCName(cust.name);
+    setCPhone(cust.phone);
+    setCDistrict(cust.district);
+    setCAddress(cust.address);
+    setCDevice(cust.device);
+    setCFault('');
+    setIsNewJobOpen(true);
+  };
+
   // Fotoğraf Çekme
   const handlePickPhoto = async (type: 'old' | 'new') => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
@@ -372,19 +386,6 @@ Teknisyen: ${currentUser?.name}
 İletişim: ${currentUser?.phone}
 =============================
 Bizi tercih ettiğiniz için teşekkür ederiz!`;
-
-    Linking.openURL(`https://wa.me/90${cleanPhone}?text=${encodeURIComponent(msg)}`);
-  };
-
-  // WhatsApp Bakım Hatırlatma
-  const handleSendMaintenanceOffer = (job: Job) => {
-    const cleanPhone = job.customerPhone.replace(/[^0-9]/g, '').slice(-10);
-    const msg = 
-`Sayın ${job.customerName} merhaba, ${currentUser?.companyName} servisinden yazıyoruz.
-${job.deviceType} cihazınızın periyodik bakımının üzerinden 1 yıl geçti.
-Verimli ısınma ve tasarruf için yıllık bakım zamanınız gelmiştir.
-
-Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
 
     Linking.openURL(`https://wa.me/90${cleanPhone}?text=${encodeURIComponent(msg)}`);
   };
@@ -825,11 +826,35 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
   const activeJobsCount = myCompanyJobs.filter(j => j.status !== 'completed').length;
   const completedJobsCount = myCompanyJobs.filter(j => j.status === 'completed').length;
 
+  // Benzersiz Müşteriler Listesi
+  const uniqueCustomersMap = new Map();
+  myCompanyJobs.forEach(j => {
+    const cleanP = j.customerPhone.replace(/[^0-9]/g, '').slice(-10);
+    if (!uniqueCustomersMap.has(cleanP)) {
+      uniqueCustomersMap.set(cleanP, {
+        name: j.customerName,
+        phone: j.customerPhone,
+        district: j.district,
+        address: j.address,
+        device: j.deviceType,
+        brandModel: j.brandModel,
+        lastJob: j
+      });
+    }
+  });
+  const customerList = Array.from(uniqueCustomersMap.values());
+  const filteredCustomerList = customerList.filter(c =>
+    c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+    c.phone.includes(customerSearch) ||
+    c.district.toLowerCase().includes(customerSearch.toLowerCase()) ||
+    c.device.toLowerCase().includes(customerSearch.toLowerCase())
+  );
+
   // Usta Aktif Görevi
   const activeTechJob = myTechJobs.find(j => j.status === 'assigned' || j.status === 'in_transit' || j.status === 'in_progress');
   const finishedTechJobs = myTechJobs.filter(j => j.status === 'completed');
 
-  // Kasa
+  // Kasa Hesapları
   const totalRevenue = myCompanyJobs.filter(j => j.status === 'completed').reduce((acc, cur) => acc + (cur.totalAmount || 0), 0);
   const cashRevenue = myCompanyJobs.filter(j => j.status === 'completed' && j.paymentMethod === 'nakit').reduce((acc, cur) => acc + (cur.totalAmount || 0), 0);
   const ibanRevenue = myCompanyJobs.filter(j => j.status === 'completed' && j.paymentMethod === 'havale').reduce((acc, cur) => acc + (cur.totalAmount || 0), 0);
@@ -849,11 +874,10 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
         </View>
       )}
 
-      {/* ===================== PATRON: İŞLER SEKMESİ (APPLE TARZI FERAH) ===================== */}
+      {/* ===================== PATRON: İŞLER SEKMESİ ===================== */}
       {isOwner && activeTab === 'jobs' && (
         <View style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={styles.scrollArea} showsVerticalScrollIndicator={false}>
-            {/* Apple Büyük Başlık Alanı */}
             <View style={styles.appleHeaderRow}>
               <View>
                 <Text style={styles.iosLargeTitle}>İşler</Text>
@@ -932,7 +956,6 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
 
                       <Text style={styles.iosFaultText}>{job.faultDescription}</Text>
 
-                      {/* Alt Aksiyon & Bilgi Barı */}
                       <View style={styles.iosCardFooter}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                           <Ionicons name="person-circle-outline" size={16} color="#64748b" />
@@ -964,6 +987,112 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
             </View>
           </ScrollView>
         </View>
+      )}
+
+      {/* ===================== PATRON: MÜŞTERİLER SEKMESİ (YENİ AKILLI REHBER) ===================== */}
+      {isOwner && activeTab === 'customers' && (
+        <ScrollView contentContainerStyle={styles.scrollArea} showsVerticalScrollIndicator={false}>
+          <View style={styles.appleHeaderRow}>
+            <View>
+              <Text style={styles.iosLargeTitle}>Müşteriler</Text>
+              <Text style={styles.iosSubtitle}>{customerList.length} kayıtlı müşteri & cihaz karnesi</Text>
+            </View>
+            <TouchableOpacity style={styles.appleAddHeaderBtn} onPress={() => setIsNewJobOpen(true)}>
+              <Ionicons name="add" size={20} color="#fff" />
+              <Text style={styles.appleAddHeaderText}>Yeni Müşteri</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Müşteri Arama Çubuğu */}
+          <View style={styles.iosSearchBox}>
+            <Ionicons name="search" size={18} color="#94a3b8" />
+            <TextInput
+              style={styles.iosSearchInput}
+              placeholder="İsim, telefon veya ilçe ara..."
+              placeholderTextColor="#94a3b8"
+              value={customerSearch}
+              onChangeText={setCustomerSearch}
+            />
+            {customerSearch.length > 0 && (
+              <TouchableOpacity onPress={() => setCustomerSearch('')}>
+                <Ionicons name="close-circle" size={18} color="#94a3b8" />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Müşteri Kartları */}
+          <View style={{ gap: 12, marginTop: 12 }}>
+            {filteredCustomerList.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Ionicons name="people-outline" size={40} color="#cbd5e1" />
+                <Text style={styles.emptyCardTitle}>Aranan kriterde müşteri bulunamadı</Text>
+              </View>
+            ) : (
+              filteredCustomerList.map((cust, idx) => (
+                <View key={idx} style={styles.iosCustomerCard}>
+                  <View style={styles.iosCustTopRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <View style={styles.iosCustAvatar}>
+                        <Text style={styles.iosCustAvatarText}>{cust.name.substring(0, 1)}</Text>
+                      </View>
+                      <View>
+                        <Text style={styles.iosCustCardName}>{cust.name}</Text>
+                        <Text style={styles.iosCustCardPhone}>{cust.phone}</Text>
+                      </View>
+                    </View>
+                    <View style={[styles.deviceBadge, cust.device === 'Klima' ? styles.badgeKlima : styles.badgeKombi]}>
+                      <Text style={[styles.deviceBadgeText, cust.device === 'Klima' ? styles.deviceKlimaText : styles.deviceKombiText]}>
+                        {cust.device}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.iosCustAddressBox}>
+                    <Ionicons name="location-outline" size={14} color="#64748b" />
+                    <Text style={styles.iosCustAddressText}>{cust.district} • {cust.address}</Text>
+                  </View>
+
+                  {/* Son Servis Geçmişi Özeti */}
+                  {cust.lastJob && (
+                    <View style={styles.iosCustHistorySnippet}>
+                      <Ionicons name="shield-checkmark" size={14} color="#16a34a" />
+                      <Text style={styles.iosCustHistoryText}>
+                        Son İşlem: {cust.lastJob.notes || cust.lastJob.faultDescription} ({cust.lastJob.totalAmount} ₺)
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* 3'lü Hızlı Aksiyon Barı */}
+                  <View style={styles.iosCustActionsRow}>
+                    <TouchableOpacity
+                      style={styles.iosCustActionBtn}
+                      onPress={() => Linking.openURL(`tel:${cust.phone}`)}
+                    >
+                      <Ionicons name="call" size={14} color="#0f172a" />
+                      <Text style={styles.iosCustActionText}>Ara</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.iosCustActionBtn}
+                      onPress={() => Linking.openURL(`https://wa.me/90${cust.phone.replace(/[^0-9]/g, '').slice(-10)}`)}
+                    >
+                      <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />
+                      <Text style={[styles.iosCustActionText, { color: '#16a34a' }]}>WhatsApp</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.iosCustActionBtn, styles.iosCustActionBtnPrimary]}
+                      onPress={() => handleOpenJobForCustomer(cust)}
+                    >
+                      <Ionicons name="add-circle" size={14} color="#0284c7" />
+                      <Text style={[styles.iosCustActionText, { color: '#0284c7', fontWeight: '800' }]}>Yeni İş Aç</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))
+            )}
+          </View>
+        </ScrollView>
       )}
 
       {/* ===================== PATRON: EKİP SEKMESİ ===================== */}
@@ -1017,54 +1146,6 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
         </ScrollView>
       )}
 
-      {/* ===================== PATRON: KASA SEKMESİ ===================== */}
-      {isOwner && activeTab === 'cash' && (
-        <ScrollView contentContainerStyle={styles.scrollArea} showsVerticalScrollIndicator={false}>
-          <View style={styles.appleHeaderRow}>
-            <View>
-              <Text style={styles.iosLargeTitle}>Kasa</Text>
-              <Text style={styles.iosSubtitle}>{completedJobsCount} tamamlanan servis geliri</Text>
-            </View>
-          </View>
-
-          {/* Apple Cüzdan Tarzı Koyu Kart */}
-          <View style={styles.iosWalletCard}>
-            <Text style={styles.iosWalletLabel}>TOPLAM KASA GELİRİ</Text>
-            <Text style={styles.iosWalletVal}>{totalRevenue.toLocaleString('tr-TR')} ₺</Text>
-            <View style={styles.iosWalletBreakdown}>
-              <View style={styles.iosWalletBreakItem}>
-                <Text style={styles.iosBreakLabel}>💵 Nakit</Text>
-                <Text style={styles.iosBreakVal}>{cashRevenue.toLocaleString('tr-TR')} ₺</Text>
-              </View>
-              <View style={styles.iosWalletBreakDivider} />
-              <View style={styles.iosWalletBreakItem}>
-                <Text style={styles.iosBreakLabel}>🏦 Havale/EFT</Text>
-                <Text style={styles.iosBreakVal}>{ibanRevenue.toLocaleString('tr-TR')} ₺</Text>
-              </View>
-            </View>
-          </View>
-
-          <Text style={[styles.iosSectionTitle, { marginTop: 20 }]}>Son Tahsilatlar</Text>
-          <View style={{ gap: 8, marginTop: 10 }}>
-            {myCompanyJobs.filter(j => j.status === 'completed').map(j => (
-              <View key={j.id} style={styles.iosCashRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.iosCashCust}>{j.customerName}</Text>
-                  <Text style={styles.iosCashSub}>{j.deviceType} • {j.paymentMethod?.toUpperCase()}</Text>
-                </View>
-                <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                  <Text style={styles.iosCashPrice}>+{j.totalAmount} ₺</Text>
-                  <TouchableOpacity style={styles.iosReceiptBtn} onPress={() => handleSendWhatsAppReceipt(j)}>
-                    <Ionicons name="logo-whatsapp" size={11} color="#16a34a" />
-                    <Text style={styles.iosReceiptBtnText}>Fiş Gönder</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
-          </View>
-        </ScrollView>
-      )}
-
       {/* ===================== USTA: AKTİF GÖREV VE ROTA ===================== */}
       {!isOwner && activeTab === 'task' && (
         <ScrollView contentContainerStyle={styles.scrollArea} showsVerticalScrollIndicator={false}>
@@ -1100,13 +1181,12 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
                 <Text style={styles.iosMapLink}>Harita ➔</Text>
               </TouchableOpacity>
 
-              {/* Arıza Notu */}
               <View style={styles.iosFaultBox}>
                 <Ionicons name="alert-circle-outline" size={18} color="#d97706" />
                 <Text style={styles.iosFaultBoxText}>{activeTechJob.faultDescription}</Text>
               </View>
 
-              {/* 3'lü Hızlı Aksiyon Barı */}
+              {/* Hızlı Aksiyon Barı */}
               <View style={{ flexDirection: 'row', gap: 8, marginVertical: 12 }}>
                 <TouchableOpacity
                   style={styles.iosActionBtnCall}
@@ -1171,7 +1251,6 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
             </View>
           )}
 
-          {/* Ekranın altına günün tamamlanan işleri (dolu ve şık durması için) */}
           {finishedTechJobs.length > 0 && (
             <View style={{ marginTop: 20 }}>
               <Text style={styles.iosSectionTitle}>Bugün Biten İşlerim ({finishedTechJobs.length})</Text>
@@ -1223,12 +1302,12 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
         </ScrollView>
       )}
 
-      {/* ===================== PROFİL VE AYARLAR SEKMESİ (APPLE INSET LIST) ===================== */}
+      {/* ===================== PROFİL SEKMESİ (KASA & FİNANS DAHİL) ===================== */}
       {activeTab === 'profile' && (
         <ScrollView contentContainerStyle={styles.scrollArea} showsVerticalScrollIndicator={false}>
           <View style={styles.appleHeaderRow}>
             <View>
-              <Text style={styles.iosLargeTitle}>Profil</Text>
+              <Text style={styles.iosLargeTitle}>Profil & İşletme</Text>
               <Text style={styles.iosSubtitle}>{currentUser.companyName}</Text>
             </View>
           </View>
@@ -1241,6 +1320,46 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
             <Text style={styles.iosProfileName}>{currentUser.name}</Text>
             <Text style={styles.iosProfileRole}>{isOwner ? 'Firma Sahibi (Patron)' : 'Saha Ustası'} • {currentUser.phone}</Text>
           </View>
+
+          {/* KASA & FİNANS KARTI (PATRON İÇİN PROFİL İÇİNDE) */}
+          {isOwner && (
+            <View style={{ marginBottom: 16 }}>
+              <View style={styles.iosWalletCard}>
+                <Text style={styles.iosWalletLabel}>TOPLAM KASA GELİRİ</Text>
+                <Text style={styles.iosWalletVal}>{totalRevenue.toLocaleString('tr-TR')} ₺</Text>
+                <View style={styles.iosWalletBreakdown}>
+                  <View style={styles.iosWalletBreakItem}>
+                    <Text style={styles.iosBreakLabel}>💵 Nakit</Text>
+                    <Text style={styles.iosBreakVal}>{cashRevenue.toLocaleString('tr-TR')} ₺</Text>
+                  </View>
+                  <View style={styles.iosWalletBreakDivider} />
+                  <View style={styles.iosWalletBreakItem}>
+                    <Text style={styles.iosBreakLabel}>🏦 Havale/EFT</Text>
+                    <Text style={styles.iosBreakVal}>{ibanRevenue.toLocaleString('tr-TR')} ₺</Text>
+                  </View>
+                </View>
+              </View>
+
+              <Text style={[styles.iosSectionTitle, { marginTop: 16, marginBottom: 8 }]}>Son Tahsilatlar</Text>
+              <View style={{ gap: 8 }}>
+                {myCompanyJobs.filter(j => j.status === 'completed').slice(0, 4).map(j => (
+                  <View key={j.id} style={styles.iosCashRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.iosCashCust}>{j.customerName}</Text>
+                      <Text style={styles.iosCashSub}>{j.deviceType} • {j.paymentMethod?.toUpperCase()}</Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                      <Text style={styles.iosCashPrice}>+{j.totalAmount} ₺</Text>
+                      <TouchableOpacity style={styles.iosReceiptBtn} onPress={() => handleSendWhatsAppReceipt(j)}>
+                        <Ionicons name="logo-whatsapp" size={11} color="#16a34a" />
+                        <Text style={styles.iosReceiptBtnText}>Fiş Gönder</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
 
           {/* Apple Menü Grubu */}
           <View style={styles.iosMenuGroup}>
@@ -1316,13 +1435,13 @@ Bu haftaya özel indirimli bakım randevunuzu oluşturalım mı?`;
               <Ionicons name={activeTab === 'jobs' ? 'list' : 'list-outline'} size={24} color={activeTab === 'jobs' ? '#0284c7' : '#94a3b8'} />
               <Text style={[styles.appleTabText, activeTab === 'jobs' && styles.appleTabTextActive]}>İşler</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.appleTabItem} onPress={() => setActiveTab('team')}>
-              <Ionicons name={activeTab === 'team' ? 'people' : 'people-outline'} size={24} color={activeTab === 'team' ? '#0284c7' : '#94a3b8'} />
-              <Text style={[styles.appleTabText, activeTab === 'team' && styles.appleTabTextActive]}>Ekip</Text>
+            <TouchableOpacity style={styles.appleTabItem} onPress={() => setActiveTab('customers')}>
+              <Ionicons name={activeTab === 'customers' ? 'people' : 'people-outline'} size={24} color={activeTab === 'customers' ? '#0284c7' : '#94a3b8'} />
+              <Text style={[styles.appleTabText, activeTab === 'customers' && styles.appleTabTextActive]}>Müşteriler</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.appleTabItem} onPress={() => setActiveTab('cash')}>
-              <Ionicons name={activeTab === 'cash' ? 'wallet' : 'wallet-outline'} size={24} color={activeTab === 'cash' ? '#0284c7' : '#94a3b8'} />
-              <Text style={[styles.appleTabText, activeTab === 'cash' && styles.appleTabTextActive]}>Kasa</Text>
+            <TouchableOpacity style={styles.appleTabItem} onPress={() => setActiveTab('team')}>
+              <Ionicons name={activeTab === 'team' ? 'construct' : 'construct-outline'} size={24} color={activeTab === 'team' ? '#0284c7' : '#94a3b8'} />
+              <Text style={[styles.appleTabText, activeTab === 'team' && styles.appleTabTextActive]}>Ekip</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.appleTabItem} onPress={() => setActiveTab('profile')}>
               <Ionicons name={activeTab === 'profile' ? 'person' : 'person-outline'} size={24} color={activeTab === 'profile' ? '#0284c7' : '#94a3b8'} />
@@ -1814,6 +1933,26 @@ const styles = StyleSheet.create({
   iosFilterPillText: { fontSize: 12, fontWeight: '600', color: '#64748b' },
   iosFilterPillTextActive: { color: '#0f172a', fontWeight: '800' },
 
+  // Arama Kutusu (Müşteriler için)
+  iosSearchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: '#e2e8f0', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 6, elevation: 1 },
+  iosSearchInput: { flex: 1, marginLeft: 8, fontSize: 14, color: '#0f172a' },
+
+  // Müşteri Kartları
+  iosCustomerCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.04, shadowRadius: 10, elevation: 2, borderWidth: 1, borderColor: '#f1f5f9' },
+  iosCustTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  iosCustAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#f0f9ff', justifyContent: 'center', alignItems: 'center' },
+  iosCustAvatarText: { fontSize: 18, fontWeight: '900', color: '#0284c7' },
+  iosCustCardName: { fontSize: 16, fontWeight: '800', color: '#0f172a' },
+  iosCustCardPhone: { fontSize: 12, color: '#64748b', marginTop: 1 },
+  iosCustAddressBox: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10 },
+  iosCustAddressText: { fontSize: 12, color: '#64748b', fontWeight: '500' },
+  iosCustHistorySnippet: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#f0fdf4', padding: 8, borderRadius: 10, marginTop: 8 },
+  iosCustHistoryText: { fontSize: 11, color: '#166534', fontWeight: '600', flex: 1 },
+  iosCustActionsRow: { flexDirection: 'row', gap: 8, marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f8fafc' },
+  iosCustActionBtn: { flex: 1, backgroundColor: '#f8fafc', paddingVertical: 8, borderRadius: 10, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: '#e2e8f0' },
+  iosCustActionBtnPrimary: { backgroundColor: '#f0f9ff', borderColor: '#bae6fd' },
+  iosCustActionText: { fontSize: 12, fontWeight: '700', color: '#334155' },
+
   // Apple İş Kartı
   iosJobCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.04, shadowRadius: 10, elevation: 2, borderWidth: 1, borderColor: '#f1f5f9' },
   iosJobCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
@@ -1858,7 +1997,7 @@ const styles = StyleSheet.create({
   iosTechSub: { fontSize: 12, color: '#64748b', marginTop: 2 },
   iosCallIconBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#f0f9ff', justifyContent: 'center', alignItems: 'center' },
 
-  // Kasa
+  // Kasa / Finans
   iosWalletCard: { backgroundColor: '#0f172a', borderRadius: 24, padding: 22, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.15, shadowRadius: 16, elevation: 4 },
   iosWalletLabel: { fontSize: 11, fontWeight: '800', color: '#94a3b8', letterSpacing: 1 },
   iosWalletVal: { fontSize: 34, fontWeight: '900', color: '#fff', marginVertical: 6 },
