@@ -125,12 +125,29 @@ const initialJobs: Job[] = [
     address: 'Moda Cad. No: 14 D: 3',
     deviceType: 'Kombi',
     brandModel: 'Vaillant ecoTEC',
-    faultDescription: 'F28 Arızası veriyor, gaz valfi arızalı.',
+    faultDescription: 'F28 Arızası veriyor, kombi ateşlemiyor gaz valfi kontrol edilecek.',
     technicianId: 'user-demo-tech',
     status: 'in_progress',
     laborCost: 1200,
     partsCost: 800,
     totalAmount: 2000
+  },
+  {
+    id: 'job-2-upcoming',
+    companyId: 'comp-ege',
+    jobCode: 'SJ-102',
+    customerName: 'Canan Özdemir',
+    customerPhone: '05423334455',
+    district: 'Ataşehir',
+    address: 'Atatürk Mah. Meriç Cad. No: 8',
+    deviceType: 'Klima',
+    brandModel: 'Mitsubishi Electric',
+    faultDescription: 'Soğutmuyor, gaz kaçağı şüphesi var.',
+    technicianId: 'user-demo-tech',
+    status: 'assigned',
+    laborCost: 800,
+    partsCost: 0,
+    totalAmount: 800
   },
   {
     id: 'job-old-maintenance',
@@ -149,7 +166,7 @@ const initialJobs: Job[] = [
     partsCost: 0,
     totalAmount: 1500,
     paymentMethod: 'havale',
-    completedDate: '11 Ay Önce (16 Aralık 2025)',
+    completedDate: 'Bugün 09:30',
     isMaintenanceReminder: true
   }
 ];
@@ -160,15 +177,13 @@ export default function App() {
   const [jobs, setJobs] = useState<Job[]>(initialJobs);
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  // Patron için: jobs | customers | team | profile
-  // Usta için: task | history | profile
   const [activeTab, setActiveTab] = useState<'jobs' | 'customers' | 'team' | 'task' | 'history' | 'profile'>('jobs');
 
   // Filtreler
   const [jobFilter, setJobFilter] = useState<'all' | 'active' | 'completed'>('all');
   const [customerSearch, setCustomerSearch] = useState('');
 
-  // Bildirim Toast
+  // Toast
   const [inAppToast, setInAppToast] = useState<{ title: string; message: string } | null>(null);
 
   // Fiyat & Parça Kataloğu
@@ -229,7 +244,7 @@ export default function App() {
     initStorage();
   }, []);
 
-  // GERÇEK ZAMANLI REALTIME
+  // REALTIME
   useEffect(() => {
     if (!currentUser?.companyId || !supabase) return;
 
@@ -308,7 +323,7 @@ export default function App() {
   const [photoOld, setPhotoOld] = useState<string | null>(null);
   const [photoNew, setPhotoNew] = useState<string | null>(null);
 
-  // Telefon girilince müşteri hafızası
+  // Telefon Hafızası
   const handlePhoneChange = (text: string) => {
     setCPhone(text);
     const clean = text.trim().replace(/[^0-9]/g, '');
@@ -331,10 +346,9 @@ export default function App() {
     setCAddress(matchedOldCustomer.address);
     setCDevice(matchedOldCustomer.deviceType);
     setMatchedOldCustomer(null);
-    Alert.alert('Hafıza Yüklendi', `${matchedOldCustomer.customerName} adres ve cihaz bilgileri otomatik dolduruldu.`);
+    Alert.alert('Bilgiler Dolduruldu', `${matchedOldCustomer.customerName} adres ve cihaz bilgileri yüklendi.`);
   };
 
-  // Müşteriler Sekmesinden Hızlı İş Açma
   const handleOpenJobForCustomer = (cust: { name: string; phone: string; district: string; address: string; device: string }) => {
     setCName(cust.name);
     setCPhone(cust.phone);
@@ -345,7 +359,6 @@ export default function App() {
     setIsNewJobOpen(true);
   };
 
-  // Fotoğraf Çekme
   const handlePickPhoto = async (type: 'old' | 'new') => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
@@ -363,7 +376,25 @@ export default function App() {
     }
   };
 
-  // WhatsApp Dijital Servis Fişi
+  // Navigasyon Açma
+  const handleOpenNavigation = (address: string, district: string) => {
+    const query = encodeURIComponent(`${address} ${district} İstanbul`);
+    Alert.alert('Navigasyon Seçin', 'Hangi harita uygulamasıyla gitmek istersiniz?', [
+      {
+        text: 'Yandex Navigasyon',
+        onPress: () => Linking.openURL(`yandexnavi://build_route_on_map?lat=&lon=&desc=${query}`).catch(() => {
+          Linking.openURL(`https://maps.google.com/?q=${query}`);
+        })
+      },
+      {
+        text: 'Google Maps / Apple Haritalar',
+        onPress: () => Linking.openURL(`https://maps.google.com/?q=${query}`)
+      },
+      { text: 'Vazgeç', style: 'cancel' }
+    ]);
+  };
+
+  // WhatsApp Fişi
   const handleSendWhatsAppReceipt = (job: Job) => {
     const cleanPhone = job.customerPhone.replace(/[^0-9]/g, '').slice(-10);
     const dateStr = new Date().toLocaleDateString('tr-TR');
@@ -484,7 +515,6 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
     }
   };
 
-  // Usta Ekleme
   const handleAddTech = () => {
     if (!currentUser || currentUser.role !== 'owner') return;
     if (!newTechName.trim() || !newTechPhone.trim()) {
@@ -522,7 +552,6 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
     Alert.alert('Usta Eklendi', `${newTechObj.name} kaydedildi.`);
   };
 
-  // Yeni İş Açma
   const handleCreateJob = async () => {
     if (!currentUser) return;
     if (!cName.trim() || !cPhone.trim() || !cFault.trim()) {
@@ -568,7 +597,6 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
     setTimeout(() => setInAppToast(null), 3500);
   };
 
-  // Tahsilat Kaydetme
   const handleSavePayment = () => {
     if (!selectedJobForPay) return;
     const l = parseFloat(laborInput) || 0;
@@ -606,7 +634,7 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
       const jToShare = updatedJob;
       setTimeout(() => {
         Alert.alert(
-          'İş Tamamlandı! 🎉',
+          'İş Başarıyla Tamamlandı! 🎉',
           `Toplam ${tot} ₺ (${payMethod.toUpperCase()}) tahsil edildi.\nMüşteriye garantili dijital servis fişi göndermek ister misiniz?`,
           [
             { text: 'Kapat', style: 'cancel' },
@@ -620,7 +648,6 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
     }
   };
 
-  // Katalogdan Parça Seçme
   const handleSelectCatalogItemForJob = (item: CatalogItem) => {
     const currentNotes = notesInput.trim();
     const updatedNotes = currentNotes ? `${currentNotes}, ${item.name}` : item.name;
@@ -634,7 +661,6 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
     Alert.alert('Parça Eklendi', `${item.name} (+${item.price} ₺) eklendi.`);
   };
 
-  // Katalog Ekleme
   const handleAddCatalogItem = async () => {
     if (!newItemName.trim() || !newItemPrice.trim()) {
       Alert.alert('Eksik Bilgi', 'Parça adı ve satış fiyatı girilmelidir.');
@@ -666,7 +692,6 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
     }
   };
 
-  // PayTR Ödeme Simülasyonu
   const handleProcessPayment = () => {
     if (!cardHolder.trim() || !cardNumber.trim() || !cardExp.trim() || !cardCvv.trim()) {
       Alert.alert('Eksik Bilgi', 'Lütfen tüm kart alanlarını doldurunuz.');
@@ -681,7 +706,6 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
     }, 1800);
   };
 
-  // Çıkış
   const handleLogout = () => {
     Alert.alert('Çıkış Yap', 'Hesabınızdan çıkış yapmak istiyor musunuz?', [
       { text: 'Vazgeç', style: 'cancel' },
@@ -689,7 +713,7 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
     ]);
   };
 
-  // ===================== AUTH EKRANI =====================
+  // AUTH EKRANI
   if (!currentUser) {
     return (
       <SafeAreaView style={styles.authContainer}>
@@ -810,13 +834,12 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
     );
   }
 
-  // ===================== ANA UYGULAMA EKRANLARI =====================
+  // ===================== ANA APP EKRANLARI =====================
   const isOwner = currentUser.role === 'owner';
   const myCompanyJobs = jobs.filter(j => j.companyId === currentUser.companyId);
   const myTechJobs = jobs.filter(j => j.technicianId === currentUser.id);
   const myCompanyTechs = technicians.filter(t => t.companyId === currentUser.companyId);
 
-  // Filtrelenmiş İşler
   const filteredJobs = myCompanyJobs.filter(j => {
     if (jobFilter === 'active') return j.status !== 'completed';
     if (jobFilter === 'completed') return j.status === 'completed';
@@ -826,7 +849,7 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
   const activeJobsCount = myCompanyJobs.filter(j => j.status !== 'completed').length;
   const completedJobsCount = myCompanyJobs.filter(j => j.status === 'completed').length;
 
-  // Benzersiz Müşteriler Listesi
+  // Benzersiz Müşteriler
   const uniqueCustomersMap = new Map();
   myCompanyJobs.forEach(j => {
     const cleanP = j.customerPhone.replace(/[^0-9]/g, '').slice(-10);
@@ -850,11 +873,12 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
     c.device.toLowerCase().includes(customerSearch.toLowerCase())
   );
 
-  // Usta Aktif Görevi
+  // Usta Görevleri
   const activeTechJob = myTechJobs.find(j => j.status === 'assigned' || j.status === 'in_transit' || j.status === 'in_progress');
+  const upcomingTechJobs = myTechJobs.filter(j => j.status === 'assigned' && j.id !== activeTechJob?.id);
   const finishedTechJobs = myTechJobs.filter(j => j.status === 'completed');
 
-  // Kasa Hesapları
+  // Kasa
   const totalRevenue = myCompanyJobs.filter(j => j.status === 'completed').reduce((acc, cur) => acc + (cur.totalAmount || 0), 0);
   const cashRevenue = myCompanyJobs.filter(j => j.status === 'completed' && j.paymentMethod === 'nakit').reduce((acc, cur) => acc + (cur.totalAmount || 0), 0);
   const ibanRevenue = myCompanyJobs.filter(j => j.status === 'completed' && j.paymentMethod === 'havale').reduce((acc, cur) => acc + (cur.totalAmount || 0), 0);
@@ -863,7 +887,7 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
 
-      {/* TOAST BİLDİRİMİ */}
+      {/* TOAST */}
       {inAppToast && (
         <View style={styles.toastWrap}>
           <Ionicons name="notifications" size={18} color="#0284c7" />
@@ -889,7 +913,6 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
               </TouchableOpacity>
             </View>
 
-            {/* Apple Segmented Filter Pilleri */}
             <View style={styles.iosFilterBar}>
               <TouchableOpacity
                 style={[styles.iosFilterPill, jobFilter === 'all' && styles.iosFilterPillActive]}
@@ -917,7 +940,6 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
               </TouchableOpacity>
             </View>
 
-            {/* Temiz ve Yuvarlak Kartlar */}
             <View style={{ gap: 12 }}>
               {filteredJobs.length === 0 ? (
                 <View style={styles.emptyCard}>
@@ -989,7 +1011,7 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
         </View>
       )}
 
-      {/* ===================== PATRON: MÜŞTERİLER SEKMESİ (YENİ AKILLI REHBER) ===================== */}
+      {/* ===================== PATRON: MÜŞTERİLER SEKMESİ ===================== */}
       {isOwner && activeTab === 'customers' && (
         <ScrollView contentContainerStyle={styles.scrollArea} showsVerticalScrollIndicator={false}>
           <View style={styles.appleHeaderRow}>
@@ -1003,7 +1025,6 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
             </TouchableOpacity>
           </View>
 
-          {/* Müşteri Arama Çubuğu */}
           <View style={styles.iosSearchBox}>
             <Ionicons name="search" size={18} color="#94a3b8" />
             <TextInput
@@ -1020,7 +1041,6 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
             )}
           </View>
 
-          {/* Müşteri Kartları */}
           <View style={{ gap: 12, marginTop: 12 }}>
             {filteredCustomerList.length === 0 ? (
               <View style={styles.emptyCard}>
@@ -1052,7 +1072,6 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
                     <Text style={styles.iosCustAddressText}>{cust.district} • {cust.address}</Text>
                   </View>
 
-                  {/* Son Servis Geçmişi Özeti */}
                   {cust.lastJob && (
                     <View style={styles.iosCustHistorySnippet}>
                       <Ionicons name="shield-checkmark" size={14} color="#16a34a" />
@@ -1062,7 +1081,6 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
                     </View>
                   )}
 
-                  {/* 3'lü Hızlı Aksiyon Barı */}
                   <View style={styles.iosCustActionsRow}>
                     <TouchableOpacity
                       style={styles.iosCustActionBtn}
@@ -1109,7 +1127,6 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
             </TouchableOpacity>
           </View>
 
-          {/* Ekip Davet Kodu Kartı */}
           <View style={styles.iosInviteCard}>
             <View>
               <Text style={styles.iosInviteLabel}>EKİP DAVET KODU</Text>
@@ -1146,130 +1163,194 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
         </ScrollView>
       )}
 
-      {/* ===================== USTA: AKTİF GÖREV VE ROTA ===================== */}
+      {/* ===================== USTA: MODERN GÖREV & ROTA EKRANI (UBER DRIVER TARZI) ===================== */}
       {!isOwner && activeTab === 'task' && (
         <ScrollView contentContainerStyle={styles.scrollArea} showsVerticalScrollIndicator={false}>
-          <View style={styles.appleHeaderRow}>
+          {/* Usta Başlık & Selamlama Barı */}
+          <View style={styles.techGreetingRow}>
             <View>
-              <Text style={styles.iosLargeTitle}>Görevim</Text>
-              <Text style={styles.iosSubtitle}>{currentUser.name} • Saha İşlemi</Text>
+              <Text style={styles.techGreetingTitle}>Selam, {currentUser.name.split(' ')[0]} Usta 👋</Text>
+              <Text style={styles.techGreetingSub}>Bugün {myTechJobs.length} görev • {finishedTechJobs.length} tamamlandı</Text>
+            </View>
+            <View style={styles.techOnlineBadge}>
+              <View style={styles.onlineDot} />
+              <Text style={styles.onlineBadgeText}>Sahada Aktif</Text>
             </View>
           </View>
 
           {activeTechJob ? (
-            <View style={styles.iosHeroTaskCard}>
-              <View style={styles.iosHeroTop}>
-                <View style={styles.iosHeroBadge}>
-                  <Text style={styles.iosHeroBadgeText}>AKTİF SAHA GÖREVİ</Text>
+            <View style={styles.uberHeroCard}>
+              {/* Üst Durum Şeridi */}
+              <View style={styles.uberStatusBanner}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="flash" size={14} color="#0284c7" />
+                  <Text style={styles.uberBannerText}>ŞU ANKİ AKTİF ÇAĞRI</Text>
                 </View>
-                <Text style={styles.iosHeroCode}>{activeTechJob.jobCode}</Text>
+                <Text style={styles.uberJobCodeText}>{activeTechJob.jobCode}</Text>
               </View>
 
-              <Text style={styles.iosHeroCust}>{activeTechJob.customerName}</Text>
-              <Text style={styles.iosHeroDevice}>{activeTechJob.deviceType} ({activeTechJob.brandModel})</Text>
-
-              {/* Haritada Aç Kartı */}
-              <TouchableOpacity
-                style={styles.iosMapBanner}
-                onPress={() => Linking.openURL(`https://maps.google.com/?q=${encodeURIComponent(activeTechJob.address + ' ' + activeTechJob.district)}`)}
-              >
-                <Ionicons name="navigate-circle" size={28} color="#0284c7" />
-                <View style={{ flex: 1, marginLeft: 10 }}>
-                  <Text style={styles.iosMapDistrict}>{activeTechJob.district}</Text>
-                  <Text style={styles.iosMapAddress}>{activeTechJob.address}</Text>
+              <View style={styles.uberCardBody}>
+                {/* Müşteri ve Cihaz */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.uberCustomerName}>{activeTechJob.customerName}</Text>
+                    <View style={styles.uberDeviceRow}>
+                      <Ionicons name="build" size={13} color="#0284c7" />
+                      <Text style={styles.uberDeviceText}>{activeTechJob.deviceType} ({activeTechJob.brandModel})</Text>
+                    </View>
+                  </View>
                 </View>
-                <Text style={styles.iosMapLink}>Harita ➔</Text>
-              </TouchableOpacity>
 
-              <View style={styles.iosFaultBox}>
-                <Ionicons name="alert-circle-outline" size={18} color="#d97706" />
-                <Text style={styles.iosFaultBoxText}>{activeTechJob.faultDescription}</Text>
+                {/* Arıza Açıklaması (Sade ve Temiz) */}
+                <View style={styles.uberFaultBox}>
+                  <Text style={styles.uberFaultLabel}>Müşteri Şikayeti:</Text>
+                  <Text style={styles.uberFaultText}>{activeTechJob.faultDescription}</Text>
+                </View>
+
+                {/* Adres ve Harita Navigasyon Butonu */}
+                <TouchableOpacity
+                  style={styles.uberNavRow}
+                  onPress={() => handleOpenNavigation(activeTechJob.address, activeTechJob.district)}
+                >
+                  <View style={styles.uberNavPinCircle}>
+                    <Ionicons name="navigate" size={18} color="#0284c7" />
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <Text style={styles.uberDistrictText}>{activeTechJob.district}</Text>
+                    <Text style={styles.uberAddressText}>{activeTechJob.address}</Text>
+                  </View>
+                  <View style={styles.uberNavActionChip}>
+                    <Text style={styles.uberNavActionText}>Yol Tarifi ➔</Text>
+                  </View>
+                </TouchableOpacity>
+
+                {/* 2'li İletişim Butonu */}
+                <View style={{ flexDirection: 'row', gap: 10, marginVertical: 14 }}>
+                  <TouchableOpacity
+                    style={styles.uberContactBtnCall}
+                    onPress={() => Linking.openURL(`tel:${activeTechJob.customerPhone}`)}
+                  >
+                    <Ionicons name="call" size={16} color="#fff" />
+                    <Text style={styles.uberContactBtnText}>Müşteriyi Ara</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.uberContactBtnWa}
+                    onPress={() => Linking.openURL(`https://wa.me/90${activeTechJob.customerPhone.replace(/[^0-9]/g, '').slice(-10)}`)}
+                  >
+                    <Ionicons name="logo-whatsapp" size={16} color="#fff" />
+                    <Text style={styles.uberContactBtnText}>WhatsApp</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Aşamalı İlerleme Butonu (Büyük Parmak Dostu) */}
+                {activeTechJob.status === 'assigned' && (
+                  <TouchableOpacity
+                    style={[styles.uberMainActionBtn, { backgroundColor: '#f59e0b' }]}
+                    onPress={() => {
+                      setJobs(jobs.map(j => j.id === activeTechJob.id ? { ...j, status: 'in_transit' } : j));
+                    }}
+                  >
+                    <Ionicons name="car" size={20} color="#fff" />
+                    <Text style={styles.uberMainActionText}>Yola Çıktım ➔</Text>
+                  </TouchableOpacity>
+                )}
+
+                {activeTechJob.status === 'in_transit' && (
+                  <TouchableOpacity
+                    style={[styles.uberMainActionBtn, { backgroundColor: '#0284c7' }]}
+                    onPress={() => {
+                      setJobs(jobs.map(j => j.id === activeTechJob.id ? { ...j, status: 'in_progress' } : j));
+                    }}
+                  >
+                    <Ionicons name="build" size={20} color="#fff" />
+                    <Text style={styles.uberMainActionText}>Adresteyim & Başladım ➔</Text>
+                  </TouchableOpacity>
+                )}
+
+                {activeTechJob.status === 'in_progress' && (
+                  <TouchableOpacity
+                    style={[styles.uberMainActionBtn, { backgroundColor: '#16a34a' }]}
+                    onPress={() => {
+                      setSelectedJobForPay(activeTechJob);
+                      setIsPayModalOpen(true);
+                    }}
+                  >
+                    <Ionicons name="checkmark-circle" size={20} color="#fff" />
+                    <Text style={styles.uberMainActionText}>İşi Tamamla & Fiş Kes ➔</Text>
+                  </TouchableOpacity>
+                )}
               </View>
-
-              {/* Hızlı Aksiyon Barı */}
-              <View style={{ flexDirection: 'row', gap: 8, marginVertical: 12 }}>
-                <TouchableOpacity
-                  style={styles.iosActionBtnCall}
-                  onPress={() => Linking.openURL(`tel:${activeTechJob.customerPhone}`)}
-                >
-                  <Ionicons name="call" size={16} color="#fff" />
-                  <Text style={styles.iosActionBtnText}>Ara</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.iosActionBtnWa}
-                  onPress={() => Linking.openURL(`https://wa.me/90${activeTechJob.customerPhone.replace(/[^0-9]/g, '').slice(-10)}`)}
-                >
-                  <Ionicons name="logo-whatsapp" size={16} color="#fff" />
-                  <Text style={styles.iosActionBtnText}>WhatsApp</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Adım Adım İlerleme Butonu */}
-              {activeTechJob.status === 'assigned' && (
-                <TouchableOpacity
-                  style={[styles.iosBigStepBtn, { backgroundColor: '#f59e0b' }]}
-                  onPress={() => {
-                    setJobs(jobs.map(j => j.id === activeTechJob.id ? { ...j, status: 'in_transit' } : j));
-                  }}
-                >
-                  <Ionicons name="car" size={20} color="#fff" />
-                  <Text style={styles.iosBigStepBtnText}>Yola Çıktım ➔</Text>
-                </TouchableOpacity>
-              )}
-
-              {activeTechJob.status === 'in_transit' && (
-                <TouchableOpacity
-                  style={[styles.iosBigStepBtn, { backgroundColor: '#0284c7' }]}
-                  onPress={() => {
-                    setJobs(jobs.map(j => j.id === activeTechJob.id ? { ...j, status: 'in_progress' } : j));
-                  }}
-                >
-                  <Ionicons name="build" size={20} color="#fff" />
-                  <Text style={styles.iosBigStepBtnText}>Adresteyim & Başladım ➔</Text>
-                </TouchableOpacity>
-              )}
-
-              {activeTechJob.status === 'in_progress' && (
-                <TouchableOpacity
-                  style={[styles.iosBigStepBtn, { backgroundColor: '#16a34a' }]}
-                  onPress={() => {
-                    setSelectedJobForPay(activeTechJob);
-                    setIsPayModalOpen(true);
-                  }}
-                >
-                  <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                  <Text style={styles.iosBigStepBtnText}>İşi Tamamla & Fiş Kes ➔</Text>
-                </TouchableOpacity>
-              )}
             </View>
           ) : (
             <View style={styles.emptyCard}>
-              <Ionicons name="checkmark-done-circle" size={48} color="#16a34a" />
+              <Ionicons name="checkmark-done-circle" size={54} color="#16a34a" />
               <Text style={styles.emptyCardTitle}>Şu an atanmış aktif iş yok</Text>
               <Text style={styles.emptyCardSub}>Patron yeni iş atadığında telefonunuza anında bildirim gelecek.</Text>
             </View>
           )}
 
-          {finishedTechJobs.length > 0 && (
-            <View style={{ marginTop: 20 }}>
-              <Text style={styles.iosSectionTitle}>Bugün Biten İşlerim ({finishedTechJobs.length})</Text>
-              <View style={{ gap: 8, marginTop: 10 }}>
-                {finishedTechJobs.map(j => (
-                  <View key={j.id} style={styles.iosCashRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.iosCashCust}>{j.customerName}</Text>
-                      <Text style={styles.iosCashSub}>{j.deviceType} • {j.notes || j.faultDescription}</Text>
-                    </View>
-                    <TouchableOpacity style={styles.iosReceiptBtn} onPress={() => handleSendWhatsAppReceipt(j)}>
-                      <Ionicons name="logo-whatsapp" size={12} color="#16a34a" />
-                      <Text style={styles.iosReceiptBtnText}>Fiş Gönder</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
+          {/* GÜNÜN ROTA & ZAMAN ÇİZELGESİ (EKRANI DOLU VE KULLANIŞLI KILAN BÖLÜM) */}
+          <View style={{ marginTop: 22 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={styles.timelineHeading}>Günün Rota & İş Çizelgesi</Text>
+              <Text style={{ fontSize: 11, color: '#64748b' }}>{myTechJobs.length} Görev</Text>
             </View>
-          )}
+
+            <View style={styles.timelineCard}>
+              {myTechJobs.map((item, index) => {
+                const isActive = item.id === activeTechJob?.id;
+                const isDone = item.status === 'completed';
+
+                return (
+                  <View key={item.id} style={styles.timelineRow}>
+                    {/* Sol Zaman Çizgisi ve İkon */}
+                    <View style={styles.timelineLeftCol}>
+                      <View style={[styles.timelineDot, isActive ? styles.dotActive : isDone ? styles.dotDone : styles.dotPending]}>
+                        <Ionicons
+                          name={isDone ? 'checkmark' : isActive ? 'navigate' : 'time'}
+                          size={12}
+                          color="#fff"
+                        />
+                      </View>
+                      {index < myTechJobs.length - 1 && <View style={styles.timelineConnectingLine} />}
+                    </View>
+
+                    {/* Sağ Görev Bilgisi */}
+                    <View style={styles.timelineRightCol}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={[styles.timelineCustName, isActive && { color: '#0284c7' }]}>{item.customerName}</Text>
+                        <Text style={styles.timelineDeviceBadge}>{item.deviceType}</Text>
+                      </View>
+                      <Text style={styles.timelineSubText}>{item.district} • {item.address}</Text>
+
+                      {isDone ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                          <Text style={{ fontSize: 12, fontWeight: '800', color: '#16a34a' }}>{item.totalAmount} ₺ Tahsil Edildi</Text>
+                          <TouchableOpacity onPress={() => handleSendWhatsAppReceipt(item)}>
+                            <Text style={{ fontSize: 11, fontWeight: '800', color: '#16a34a' }}>💬 Fiş Gönder</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <Text style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{item.faultDescription}</Text>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* GÜNÜN KAZANÇ ÖZETİ KARTI */}
+          <View style={styles.techDailySummaryCard}>
+            <Ionicons name="wallet-outline" size={24} color="#0284c7" />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#64748b' }}>BUGÜNKÜ SAHA PERFORMANSIN</Text>
+              <Text style={{ fontSize: 15, fontWeight: '900', color: '#0f172a', marginTop: 2 }}>
+                {finishedTechJobs.length} Servis Tamamlandı • {finishedTechJobs.reduce((acc, c) => acc + (c.totalAmount || 0), 0)} ₺ Tahsil Edildi
+              </Text>
+            </View>
+          </View>
         </ScrollView>
       )}
 
@@ -1361,7 +1442,7 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
             </View>
           )}
 
-          {/* Apple Menü Grubu */}
+          {/* Menü Grubu */}
           <View style={styles.iosMenuGroup}>
             {isOwner && (
               <>
@@ -1427,7 +1508,7 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
         </ScrollView>
       )}
 
-      {/* ===================== APPLE ALT GEZİNME ÇUBUĞU (TAB BAR) ===================== */}
+      {/* ===================== TAB BAR ===================== */}
       <View style={styles.appleTabBar}>
         {isOwner ? (
           <>
@@ -1466,7 +1547,8 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
         )}
       </View>
 
-      {/* ===================== MODAL: YENİ İŞ KAYDI ===================== */}
+      {/* ===================== MODALLAR ===================== */}
+      {/* 1. Yeni İş Modal */}
       <Modal visible={isNewJobOpen} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBg}>
           <View style={styles.iosModalSheet}>
@@ -1546,7 +1628,7 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ===================== MODAL: USTA EKLE ===================== */}
+      {/* 2. Usta Ekle Modal */}
       <Modal visible={isAddTechOpen} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBg}>
           <View style={styles.iosModalSheet}>
@@ -1576,7 +1658,7 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ===================== MODAL: İŞİ BİTİR & TAHSİLAT ===================== */}
+      {/* 3. İşi Bitir & Tahsilat Modal */}
       <Modal visible={isPayModalOpen} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBg}>
           <View style={[styles.iosModalSheet, { maxHeight: '92%' }]}>
@@ -1651,7 +1733,7 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ===================== MODAL: KATALOGDAN PARÇA SEÇ ===================== */}
+      {/* 4. Katalogdan Parça Seç Modal */}
       <Modal visible={isPickPartModalOpen} animationType="slide" transparent>
         <View style={styles.modalBg}>
           <View style={[styles.iosModalSheet, { maxHeight: '85%' }]}>
@@ -1664,7 +1746,7 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
 
             <TextInput
               style={[styles.iosInput, { marginBottom: 12 }]}
-              placeholder="🔍 Parça veya işlem ara (Fan, Bakım)..."
+              placeholder="🔍 Parça veya işlem ara..."
               placeholderTextColor="#94a3b8"
               value={catalogSearch}
               onChangeText={setCatalogSearch}
@@ -1694,7 +1776,7 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
         </View>
       </Modal>
 
-      {/* ===================== MODAL: FİYAT KATALOĞU YÖNETİMİ ===================== */}
+      {/* 5. Fiyat Kataloğu Yönetimi Modal */}
       <Modal visible={isCatalogModalOpen} animationType="slide" transparent>
         <View style={styles.modalBg}>
           <View style={[styles.iosModalSheet, { maxHeight: '90%' }]}>
@@ -1747,7 +1829,7 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
         </View>
       </Modal>
 
-      {/* ===================== MODAL: YENİ KATALOG PARÇASI ===================== */}
+      {/* 6. Yeni Parça Modal */}
       <Modal visible={isAddCatalogItemOpen} animationType="fade" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBg}>
           <View style={styles.iosModalSheet}>
@@ -1792,7 +1874,7 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ===================== MODAL: ABONELİK & ÖDEME ===================== */}
+      {/* 7. Abonelik & PayTR Modal */}
       <Modal visible={isSubscriptionModalOpen} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBg}>
           <View style={[styles.iosModalSheet, { maxHeight: '92%' }]}>
@@ -1909,7 +1991,7 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
   );
 }
 
-// ===================== APPLE SF-STYLE ARAYÜZ STİLLERİ =====================
+// ===================== PROFESYONEL MOBİL STİLLERİ =====================
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   scrollArea: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 110 },
@@ -1919,25 +2001,25 @@ const styles = StyleSheet.create({
   toastTitle: { color: '#0f172a', fontWeight: '800', fontSize: 13 },
   toastMessage: { color: '#64748b', fontSize: 11, marginTop: 2 },
 
-  // Apple Büyük Başlık Satırı
+  // Apple Başlık
   appleHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16 },
   iosLargeTitle: { fontSize: 28, fontWeight: '900', color: '#0f172a', letterSpacing: -0.5 },
   iosSubtitle: { fontSize: 13, color: '#64748b', marginTop: 2, fontWeight: '500' },
   appleAddHeaderBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#0284c7', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, shadowColor: '#0284c7', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 3 },
   appleAddHeaderText: { color: '#fff', fontSize: 13, fontWeight: '800' },
 
-  // Segmented Filtre Barı
+  // Segmented Filtre
   iosFilterBar: { flexDirection: 'row', backgroundColor: '#e2e8f0', borderRadius: 12, padding: 4, marginBottom: 16 },
   iosFilterPill: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 9 },
   iosFilterPillActive: { backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 3, elevation: 1 },
   iosFilterPillText: { fontSize: 12, fontWeight: '600', color: '#64748b' },
   iosFilterPillTextActive: { color: '#0f172a', fontWeight: '800' },
 
-  // Arama Kutusu (Müşteriler için)
+  // Müşteri Arama
   iosSearchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: '#e2e8f0', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 6, elevation: 1 },
   iosSearchInput: { flex: 1, marginLeft: 8, fontSize: 14, color: '#0f172a' },
 
-  // Müşteri Kartları
+  // Müşteri Kartı
   iosCustomerCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.04, shadowRadius: 10, elevation: 2, borderWidth: 1, borderColor: '#f1f5f9' },
   iosCustTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   iosCustAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#f0f9ff', justifyContent: 'center', alignItems: 'center' },
@@ -1953,7 +2035,7 @@ const styles = StyleSheet.create({
   iosCustActionBtnPrimary: { backgroundColor: '#f0f9ff', borderColor: '#bae6fd' },
   iosCustActionText: { fontSize: 12, fontWeight: '700', color: '#334155' },
 
-  // Apple İş Kartı
+  // Patron İş Kartı
   iosJobCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.04, shadowRadius: 10, elevation: 2, borderWidth: 1, borderColor: '#f1f5f9' },
   iosJobCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   deviceBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
@@ -1969,12 +2051,10 @@ const styles = StyleSheet.create({
   statusTagText: { fontSize: 10, fontWeight: '800' },
   statusTagTextActive: { color: '#b45309' },
   statusTagTextDone: { color: '#15803d' },
-
   iosCustName: { fontSize: 17, fontWeight: '800', color: '#0f172a' },
   iosLocationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
   iosLocationText: { fontSize: 12, color: '#64748b', fontWeight: '500' },
   iosFaultText: { fontSize: 13, color: '#334155', marginTop: 8, lineHeight: 18 },
-
   iosCardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f8fafc' },
   iosTechLabel: { fontSize: 12, color: '#64748b', fontWeight: '600' },
   iosPriceText: { fontSize: 15, fontWeight: '900', color: '#16a34a' },
@@ -1989,7 +2069,6 @@ const styles = StyleSheet.create({
   iosInviteCode: { fontSize: 26, fontWeight: '900', color: '#38bdf8', letterSpacing: 2, marginTop: 2 },
   iosShareCodeBtn: { backgroundColor: '#16a34a', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
   iosShareCodeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
-
   iosTechItemCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#f1f5f9' },
   iosTechAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#e0f2fe', justifyContent: 'center', alignItems: 'center' },
   iosTechAvatarText: { fontSize: 16, fontWeight: '900', color: '#0284c7' },
@@ -1997,7 +2076,58 @@ const styles = StyleSheet.create({
   iosTechSub: { fontSize: 12, color: '#64748b', marginTop: 2 },
   iosCallIconBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#f0f9ff', justifyContent: 'center', alignItems: 'center' },
 
-  // Kasa / Finans
+  // ===================== UBER DRIVER SAHA TASARIMI =====================
+  techGreetingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  techGreetingTitle: { fontSize: 20, fontWeight: '900', color: '#0f172a' },
+  techGreetingSub: { fontSize: 12, color: '#64748b', marginTop: 2 },
+  techOnlineBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ecfdf5', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: '#a7f3d0' },
+  onlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#16a34a' },
+  onlineBadgeText: { fontSize: 11, fontWeight: '800', color: '#16a34a' },
+
+  uberHeroCard: { backgroundColor: '#fff', borderRadius: 24, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 4, borderWidth: 1, borderColor: '#e2e8f0' },
+  uberStatusBanner: { backgroundColor: '#f0f9ff', paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#e0f2fe' },
+  uberBannerText: { fontSize: 11, fontWeight: '900', color: '#0284c7', letterSpacing: 0.5 },
+  uberJobCodeText: { fontSize: 12, fontWeight: '800', color: '#64748b' },
+  uberCardBody: { padding: 18 },
+  uberCustomerName: { fontSize: 24, fontWeight: '900', color: '#0f172a', letterSpacing: -0.5 },
+  uberDeviceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  uberDeviceText: { fontSize: 13, fontWeight: '700', color: '#0284c7' },
+
+  uberFaultBox: { backgroundColor: '#f8fafc', padding: 12, borderRadius: 14, marginVertical: 12, borderWidth: 1, borderColor: '#f1f5f9' },
+  uberFaultLabel: { fontSize: 11, fontWeight: '700', color: '#64748b' },
+  uberFaultText: { fontSize: 13, color: '#1e293b', fontWeight: '500', marginTop: 2, lineHeight: 18 },
+
+  uberNavRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0fdf4', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: '#bbf7d0' },
+  uberNavPinCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#dcfce7', justifyContent: 'center', alignItems: 'center' },
+  uberDistrictText: { fontSize: 14, fontWeight: '800', color: '#14532d' },
+  uberAddressText: { fontSize: 11, color: '#166534', marginTop: 1 },
+  uberNavActionChip: { backgroundColor: '#16a34a', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
+  uberNavActionText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+
+  uberContactBtnCall: { flex: 1, backgroundColor: '#0f172a', paddingVertical: 12, borderRadius: 14, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
+  uberContactBtnWa: { flex: 1, backgroundColor: '#16a34a', paddingVertical: 12, borderRadius: 14, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
+  uberContactBtnText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  uberMainActionBtn: { paddingVertical: 16, borderRadius: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 3 },
+  uberMainActionText: { color: '#fff', fontSize: 15, fontWeight: '900' },
+
+  // Günün Zaman Çizelgesi (Rota)
+  timelineHeading: { fontSize: 16, fontWeight: '900', color: '#0f172a' },
+  timelineCard: { backgroundColor: '#fff', borderRadius: 20, padding: 18, borderWidth: 1, borderColor: '#f1f5f9' },
+  timelineRow: { flexDirection: 'row', minHeight: 60 },
+  timelineLeftCol: { width: 24, alignItems: 'center' },
+  timelineDot: { width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  dotActive: { backgroundColor: '#0284c7' },
+  dotDone: { backgroundColor: '#16a34a' },
+  dotPending: { backgroundColor: '#cbd5e1' },
+  timelineConnectingLine: { width: 2, flex: 1, backgroundColor: '#e2e8f0', marginVertical: 4 },
+  timelineRightCol: { flex: 1, marginLeft: 12, paddingBottom: 14 },
+  timelineCustName: { fontSize: 14, fontWeight: '800', color: '#0f172a' },
+  timelineDeviceBadge: { fontSize: 10, fontWeight: '800', color: '#64748b', backgroundColor: '#f1f5f9', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  timelineSubText: { fontSize: 12, color: '#64748b', marginTop: 2 },
+
+  techDailySummaryCard: { backgroundColor: '#fff', borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', marginTop: 14, borderWidth: 1, borderColor: '#f1f5f9' },
+
+  // Kasa / Finans (Profilde)
   iosWalletCard: { backgroundColor: '#0f172a', borderRadius: 24, padding: 22, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.15, shadowRadius: 16, elevation: 4 },
   iosWalletLabel: { fontSize: 11, fontWeight: '800', color: '#94a3b8', letterSpacing: 1 },
   iosWalletVal: { fontSize: 34, fontWeight: '900', color: '#fff', marginVertical: 6 },
@@ -2011,30 +2141,6 @@ const styles = StyleSheet.create({
   iosCashCust: { fontSize: 14, fontWeight: '800', color: '#0f172a' },
   iosCashSub: { fontSize: 12, color: '#64748b', marginTop: 2 },
   iosCashPrice: { fontSize: 15, fontWeight: '900', color: '#16a34a' },
-
-  // Usta Hero Card
-  iosHeroTaskCard: { backgroundColor: '#fff', borderRadius: 24, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 4, borderWidth: 1, borderColor: '#e0f2fe' },
-  iosHeroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  iosHeroBadge: { backgroundColor: '#0284c7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  iosHeroBadgeText: { color: '#fff', fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
-  iosHeroCode: { fontSize: 13, fontWeight: '800', color: '#94a3b8' },
-  iosHeroCust: { fontSize: 22, fontWeight: '900', color: '#0f172a', marginTop: 4 },
-  iosHeroDevice: { fontSize: 14, fontWeight: '700', color: '#0284c7', marginTop: 2 },
-
-  iosMapBanner: { backgroundColor: '#f8fafc', borderRadius: 14, padding: 12, flexDirection: 'row', alignItems: 'center', marginVertical: 12, borderWidth: 1, borderColor: '#e2e8f0' },
-  iosMapDistrict: { fontSize: 13, fontWeight: '800', color: '#0f172a' },
-  iosMapAddress: { fontSize: 11, color: '#64748b', marginTop: 1 },
-  iosMapLink: { fontSize: 11, fontWeight: '800', color: '#0284c7' },
-
-  iosFaultBox: { backgroundColor: '#fffbeb', borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  iosFaultBoxText: { fontSize: 12, color: '#b45309', flex: 1, fontWeight: '500' },
-
-  iosActionBtnCall: { flex: 1, backgroundColor: '#0f172a', borderRadius: 14, paddingVertical: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
-  iosActionBtnWa: { flex: 1, backgroundColor: '#16a34a', borderRadius: 14, paddingVertical: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
-  iosActionBtnText: { color: '#fff', fontSize: 13, fontWeight: '800' },
-
-  iosBigStepBtn: { borderRadius: 16, paddingVertical: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 4 },
-  iosBigStepBtnText: { color: '#fff', fontSize: 15, fontWeight: '900' },
 
   // Profil
   iosProfileCard: { backgroundColor: '#fff', borderRadius: 20, padding: 22, alignItems: 'center', marginBottom: 16, borderWidth: 1, borderColor: '#f1f5f9' },
@@ -2052,7 +2158,7 @@ const styles = StyleSheet.create({
   iosLogoutBtn: { backgroundColor: '#fef2f2', borderRadius: 16, paddingVertical: 14, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
   iosLogoutText: { color: '#ef4444', fontSize: 14, fontWeight: '800' },
 
-  // Alt Tab Bar
+  // Tab Bar
   appleTabBar: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.95)', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingVertical: 10, paddingBottom: Platform.OS === 'ios' ? 24 : 10, position: 'absolute', bottom: 0, left: 0, right: 0 },
   appleTabItem: { flex: 1, alignItems: 'center', gap: 3 },
   appleTabText: { fontSize: 10, fontWeight: '600', color: '#94a3b8' },
@@ -2093,7 +2199,7 @@ const styles = StyleSheet.create({
 
   iosTotalAmountBox: { backgroundColor: '#ecfdf5', borderRadius: 14, padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 12 },
 
-  // Katalog Seçim Listesi
+  // Katalog Seçim
   iosCatalogPickRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#f8fafc', borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 8 },
   iosCatalogPickName: { fontSize: 13, fontWeight: '800', color: '#0f172a' },
   iosCatalogPickCat: { fontSize: 11, color: '#64748b', marginTop: 2 },
@@ -2101,7 +2207,7 @@ const styles = StyleSheet.create({
   iosCatalogPickPrice: { fontSize: 13, fontWeight: '900', color: '#0284c7' },
   iosCatalogManageItem: { flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: '#f8fafc', borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0' },
 
-  // Abonelik Paket Kartları
+  // Plan
   iosPlanCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1.5, borderColor: '#e2e8f0', marginBottom: 10 },
   iosPlanCardActive: { borderColor: '#0284c7', backgroundColor: '#f0f9ff' },
   iosPopPill: { alignSelf: 'flex-start', backgroundColor: '#0284c7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
