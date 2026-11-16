@@ -1,23 +1,29 @@
-import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
+import { Platform, Vibration } from 'react-native';
+
+// Safe dynamic loader to prevent Metro / Expo Go crash on iOS
+let Notifications: any = null;
 
 try {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-      priority: Notifications.AndroidNotificationPriority.HIGH,
-    }),
-  });
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  Notifications = require('expo-notifications');
+  if (Notifications && Notifications.setNotificationHandler) {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
+  }
 } catch (e) {
-  console.log('Notification handler init error:', e);
+  // Silently fallback on platforms or Expo Go builds where native notifications are restricted
+  Notifications = null;
 }
 
 export async function requestNotificationPermissions(): Promise<boolean> {
-  if (Platform.OS === 'web') return false;
+  if (Platform.OS === 'web' || !Notifications) return false;
   try {
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
@@ -27,23 +33,32 @@ export async function requestNotificationPermissions(): Promise<boolean> {
     }
     return finalStatus === 'granted';
   } catch (error) {
-    console.warn('Notification permission error:', error);
     return false;
   }
 }
 
 export async function triggerJobNotification(techName: string, customerName: string, device: string, district: string) {
+  // Cihazda titreşim ile fiziksel uyarı ver
   try {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: '🔔 Yeni Servis İşi Atandı!',
-        body: `${customerName} - ${device} (${district}) arızası için göreve atandınız.`,
-        data: { customerName, device, district, techName },
-        sound: true,
-      },
-      trigger: null,
-    });
-  } catch (error) {
-    console.warn('Could not schedule notification:', error);
+    Vibration.vibrate(Platform.OS === 'android' ? 500 : [0, 400]);
+  } catch (e) {
+    // ignore
+  }
+
+  // Cihaz bildirim servisi varsa yerel bildirim fırlat
+  if (Notifications && Notifications.scheduleNotificationAsync) {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '🔔 Yeni Servis İşi Atandı!',
+          body: `${customerName} - ${device} (${district}) arızası için göreve atandınız.`,
+          data: { customerName, device, district, techName },
+          sound: true,
+        },
+        trigger: null,
+      });
+    } catch (error) {
+      console.warn('Native notification trigger skipped:', error);
+    }
   }
 }
