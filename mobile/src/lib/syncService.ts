@@ -20,12 +20,13 @@ export const SyncService = {
     }
   },
 
-  async syncJobToCloud(job: any, companyCode: string) {
+  async syncJobToCloud(job: any, companyCode?: string) {
     try {
       if (!supabase) return;
+      const code = companyCode || job.companyCode || job.companyId || 'EGE34';
       const { error } = await supabase.from('jobs').upsert({
         job_code: job.jobCode,
-        company_code: companyCode,
+        company_code: code,
         customer_name: job.customerName,
         customer_phone: job.customerPhone,
         district: job.district,

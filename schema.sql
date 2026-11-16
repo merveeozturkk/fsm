@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS companies (
     name TEXT NOT NULL,
     company_code TEXT UNIQUE NOT NULL,
     phone TEXT,
+    subscription_tier TEXT DEFAULT 'trial', -- 'trial', 'standard', 'pro', 'yearly'
+    subscription_status TEXT DEFAULT 'active', -- 'active', 'expired', 'canceled'
+    trial_ends_at TIMESTAMP WITH TIME ZONE DEFAULT (now() + interval '14 days'),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -19,6 +22,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     phone TEXT NOT NULL,
     role TEXT CHECK (role IN ('owner', 'technician')) NOT NULL,
     vehicle_plate TEXT,
+    push_token TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -55,6 +59,17 @@ CREATE TABLE IF NOT EXISTS jobs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- 5. Fiyat & Yedek Parça Kataloğu
+CREATE TABLE IF NOT EXISTS price_catalog (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    company_code TEXT NOT NULL,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL, -- 'Kombi', 'Klima', 'Beyaz Eşya', 'Genel'
+    price NUMERIC NOT NULL,
+    cost_price NUMERIC DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
 -- Mobil Kolaylık Kolonları (Tek Tabloda Hızlı Senkronizasyon)
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS customer_name TEXT;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS customer_phone TEXT;
@@ -62,3 +77,9 @@ ALTER TABLE jobs ADD COLUMN IF NOT EXISTS district TEXT;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS address TEXT;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS company_code TEXT;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS technician_name TEXT;
+
+-- Şirket Abonelik Kolonları
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS subscription_tier TEXT DEFAULT 'trial';
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'active';
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMP WITH TIME ZONE DEFAULT (now() + interval '14 days');
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS push_token TEXT;
