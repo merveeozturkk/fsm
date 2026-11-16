@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Recursive ignores for sub-apps
+**/node_modules/
+**/.expo/
+**/.next/
+**/.vercel/
+*.tsbuildinfo
