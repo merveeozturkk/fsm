@@ -1,25 +1,54 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "ServisJet - Teknik Servis",
+    "slug": "servisjet-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.servisjet.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "CFBundleAllowMixedLocalizations": true,
+        "NSCameraUsageDescription": "ServisJet, değiştirilen parça ve arıza kanıtlarını servis fişine eklemek için kameranıza erişim ister.",
+        "NSPhotoLibraryUsageDescription": "ServisJet, servis kayıtlarına galeriden cihaz ve parça fotoğrafı eklemek için fotoğraf arşivinize erişim ister.",
+        "NSLocationWhenInUseUsageDescription": "ServisJet, müşterinin adresine navigasyon ve yol tarifi başlatabilmeniz için konumunuza erişim ister."
+      }
     },
     "android": {
+      "package": "com.servisjet.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ],
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ServisJet, servis kayıtlarına parça fotoğrafı eklemek için galerinize erişim ister.",
+          "cameraPermission": "ServisJet, arızalı ve yeni parça fotoğraflarını çekebilmeniz için kameranıza erişim ister."
+        }
+      ]
+    ]
   }
 }

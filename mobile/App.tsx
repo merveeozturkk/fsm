@@ -713,6 +713,37 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
     ]);
   };
 
+  // Apple Guideline 5.1.1(v) - Hesap ve Verileri Silme (App Store Zorunluluğu)
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Hesabınızı Silmek İstediğinize Emin Misiniz?',
+      'Apple Güvenlik Politikası ve KVKK gereği; hesabınız, kayıtlı müşterileriniz, cihaz karneleri ve tüm servis fişleriniz kalıcı olarak silinecektir. Bu işlem geri alınamaz.',
+      [
+        { text: 'Vazgeç', style: 'cancel' },
+        {
+          text: 'Hesabımı ve Verilerimi Kalıcı Olarak Sil',
+          style: 'destructive',
+          onPress: async () => {
+            if (!currentUser) return;
+            const updatedUsers = users.filter(u => u.id !== currentUser.id);
+            const updatedJobs = jobs.filter(j => j.companyId !== currentUser.companyId);
+            const updatedTechs = technicians.filter(t => t.companyId !== currentUser.companyId);
+            setUsers(updatedUsers);
+            setJobs(updatedJobs);
+            setTechnicians(updatedTechs);
+            await SyncService.saveLocal('@servisjet_users', updatedUsers);
+            await SyncService.saveLocal('@servisjet_jobs', updatedJobs);
+            await SyncService.saveLocal('@servisjet_techs', updatedTechs);
+            await SyncService.saveLocal('@servisjet_current_user', null);
+            setCurrentUser(null);
+            setAuthView('login');
+            Alert.alert('Hesabınız Silindi', 'Hesabınız ve tüm verileriniz başarıyla sistemden temizlendi.');
+          }
+        }
+      ]
+    );
+  };
+
   // AUTH EKRANI
   if (!currentUser) {
     return (
@@ -1499,11 +1530,46 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
                 </View>
               </View>
             )}
+
+            {/* Apple & KVKK Yasal Bağlantılar */}
+            <TouchableOpacity
+              style={styles.iosMenuItem}
+              onPress={() => Linking.openURL('https://servisjet.com/gizlilik')}
+            >
+              <View style={[styles.iosMenuIconWrap, { backgroundColor: '#f1f5f9' }]}>
+                <Ionicons name="shield-checkmark-outline" size={18} color="#475569" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.iosMenuTitle}>Gizlilik Politikası</Text>
+                <Text style={styles.iosMenuSub}>KVKK & Veri Güvenliği Aydınlatması</Text>
+              </View>
+              <Ionicons name="open-outline" size={16} color="#94a3b8" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.iosMenuItem}
+              onPress={() => Linking.openURL('https://servisjet.com/kullanim-kosullari')}
+            >
+              <View style={[styles.iosMenuIconWrap, { backgroundColor: '#f1f5f9' }]}>
+                <Ionicons name="document-text-outline" size={18} color="#475569" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.iosMenuTitle}>Kullanım Koşulları</Text>
+                <Text style={styles.iosMenuSub}>Lisans & Hizmet Şartları (EULA)</Text>
+              </View>
+              <Ionicons name="open-outline" size={16} color="#94a3b8" />
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity style={styles.iosLogoutBtn} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={18} color="#ef4444" />
             <Text style={styles.iosLogoutText}>Hesaptan Çıkış Yap</Text>
+          </TouchableOpacity>
+
+          {/* Apple Guideline 5.1.1(v) Zorunlu Hesap Silme Butonu */}
+          <TouchableOpacity style={styles.iosDeleteAccountBtn} onPress={handleDeleteAccount}>
+            <Ionicons name="trash-outline" size={16} color="#94a3b8" />
+            <Text style={styles.iosDeleteAccountText}>Hesabımı ve Tüm Verilerimi Kalıcı Olarak Sil</Text>
           </TouchableOpacity>
         </ScrollView>
       )}
@@ -1931,8 +1997,33 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
                   <Text style={styles.iosPlanSub}>Sınırsız Usta • Özel Şirket Logosu • VIP 7/24 Destek</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.applePrimaryBtn} onPress={() => setSubModalStep('checkout')}>
-                  <Text style={styles.applePrimaryBtnText}>Ödemeye Geç ➔</Text>
+                {/* Apple Guideline 3.1.3 Multiplatform B2B SaaS Uyumluluğu */}
+                <TouchableOpacity
+                  style={[styles.applePrimaryBtn, { backgroundColor: '#0284c7' }]}
+                  onPress={() => Linking.openURL('https://servisjet.com')}
+                >
+                  <Ionicons name="globe-outline" size={18} color="#fff" />
+                  <Text style={styles.applePrimaryBtnText}>🌐 Web Panelinden Kurumsal Abone Ol</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.applePrimaryBtn, { backgroundColor: '#16a34a', marginTop: 10 }]}
+                  onPress={() => {
+                    const msg = `Merhaba, ${currentUser?.companyName} için ${selectedPlan.toUpperCase()} paketine geçmek istiyoruz. Kurumsal fatura ve aktivasyon desteği alabilir miyiz?`;
+                    Linking.openURL(`https://wa.me/905321002030?text=${encodeURIComponent(msg)}`);
+                  }}
+                >
+                  <Ionicons name="logo-whatsapp" size={18} color="#fff" />
+                  <Text style={styles.applePrimaryBtnText}>💬 WhatsApp Kurumsal Satış Temsilcisi</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{ alignItems: 'center', marginTop: 14 }}
+                  onPress={() => setSubModalStep('checkout')}
+                >
+                  <Text style={{ color: '#94a3b8', fontSize: 12, textDecorationLine: 'underline' }}>
+                    💳 Doğrudan Kartla Öde (Geliştirici / Test Girişi)
+                  </Text>
                 </TouchableOpacity>
               </ScrollView>
             )}
@@ -2157,6 +2248,8 @@ const styles = StyleSheet.create({
 
   iosLogoutBtn: { backgroundColor: '#fef2f2', borderRadius: 16, paddingVertical: 14, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
   iosLogoutText: { color: '#ef4444', fontSize: 14, fontWeight: '800' },
+  iosDeleteAccountBtn: { marginTop: 12, paddingVertical: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 },
+  iosDeleteAccountText: { color: '#94a3b8', fontSize: 12, fontWeight: '600' },
 
   // Tab Bar
   appleTabBar: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.95)', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingVertical: 10, paddingBottom: Platform.OS === 'ios' ? 24 : 10, position: 'absolute', bottom: 0, left: 0, right: 0 },
