@@ -38,7 +38,11 @@ export const SyncService = {
         parts_cost: job.partsCost,
         total_amount: job.totalAmount,
         payment_method: job.paymentMethod,
-        notes: job.notes
+        notes: job.notes,
+        verified_location_lat: job.verifiedLat,
+        verified_location_lng: job.verifiedLng,
+        verified_address: job.verifiedAddress,
+        arrived_at: job.arrivedTime
       }, { onConflict: 'job_code' });
       if (error) console.log('Supabase sync warning:', error.message);
     } catch (e) {
@@ -73,7 +77,11 @@ export const SyncService = {
         partsCost: d.parts_cost || 0,
         totalAmount: d.total_amount || 0,
         paymentMethod: d.payment_method,
-        notes: d.notes
+        notes: d.notes,
+        verifiedLat: d.verified_location_lat,
+        verifiedLng: d.verified_location_lng,
+        verifiedAddress: d.verified_address,
+        arrivedTime: d.arrived_at
       }));
     } catch (e) {
       return null;

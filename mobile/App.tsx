@@ -22,6 +22,8 @@ import { SyncService } from './src/lib/syncService';
 import { supabase } from './src/lib/supabase';
 import { requestNotificationPermissions, triggerJobNotification } from './src/lib/notificationService';
 import { CatalogItem, DEFAULT_CATALOG, loadCatalog, saveCatalog } from './src/lib/catalogService';
+import { getCurrentGPSLocation } from './src/lib/locationService';
+
 
 interface User {
   id: string;
@@ -67,6 +69,10 @@ interface Job {
   photoNew?: string;
   completedDate?: string;
   isMaintenanceReminder?: boolean;
+  verifiedLat?: number;
+  verifiedLng?: number;
+  verifiedAddress?: string;
+  arrivedTime?: string;
 }
 
 const initialUsers: User[] = [
@@ -130,7 +136,11 @@ const initialJobs: Job[] = [
     status: 'in_progress',
     laborCost: 1200,
     partsCost: 800,
-    totalAmount: 2000
+    totalAmount: 2000,
+    verifiedLat: 40.9876,
+    verifiedLng: 29.0284,
+    verifiedAddress: 'Moda Cad. No: 14, Kadıköy',
+    arrivedTime: '14:15'
   },
   {
     id: 'job-2-upcoming',
@@ -308,6 +318,7 @@ export default function App() {
   const [cFault, setCFault] = useState('');
   const [selectedTech, setSelectedTech] = useState('');
   const [matchedOldCustomer, setMatchedOldCustomer] = useState<Job | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
 
   // Usta Ekleme
   const [newTechName, setNewTechName] = useState('');
@@ -394,10 +405,78 @@ export default function App() {
     ]);
   };
 
+  // GPS Konum Doldurma (Yeni İş Modalında)
+  const handleFetchCurrentLocationForJob = async () => {
+    setIsLocating(true);
+    try {
+      const loc = await getCurrentGPSLocation();
+      if (loc) {
+        if (loc.district) {
+          setCDistrict(loc.district);
+        }
+        if (loc.formattedAddress && !cAddress) {
+          setCAddress(loc.formattedAddress);
+        }
+        Alert.alert('📍 Konum Alındı', `${loc.district || 'Bölge'} tespit edildi ve forma aktarıldı.`);
+      } else {
+        Alert.alert('Konum Alınamadı', 'Lütfen cihazınızın konum izinlerini ve GPS servisinin açık olduğunu kontrol edin.');
+      }
+    } catch (e) {
+      Alert.alert('Hata', 'Konum servisine erişilemedi.');
+    } finally {
+      setIsLocating(false);
+    }
+  };
+
+  // Usta Adrese Vardığında Akıllı GPS Damgası
+  const handleArriveAtCustomer = async (targetJob: Job) => {
+    setIsLocating(true);
+    try {
+      const nowTime = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+      const loc = await getCurrentGPSLocation();
+
+      const updatedJob: Job = {
+        ...targetJob,
+        status: 'in_progress',
+        arrivedTime: nowTime,
+        ...(loc ? {
+          verifiedLat: loc.latitude,
+          verifiedLng: loc.longitude,
+          verifiedAddress: loc.formattedAddress || (loc.district ? `${loc.district}, ${loc.city || ''}`.trim() : undefined)
+        } : {})
+      };
+
+      const nextJobs = jobs.map(j => j.id === targetJob.id ? updatedJob : j);
+      setJobs(nextJobs);
+      SyncService.syncJobToCloud(updatedJob, currentUser?.companyCode);
+
+      if (loc) {
+        setInAppToast({
+          title: '📍 GPS Adres Doğrulandı',
+          message: `${loc.district || 'Müşteri adresi'} koordinatları onaylandı.`
+        });
+      } else {
+        setInAppToast({
+          title: 'İşe Başlandı 🛠️',
+          message: 'Durum "İşlemde" olarak güncellendi.'
+        });
+      }
+      setTimeout(() => setInAppToast(null), 3500);
+    } catch (err) {
+      setJobs(jobs.map(j => j.id === targetJob.id ? { ...j, status: 'in_progress' } : j));
+    } finally {
+      setIsLocating(false);
+    }
+  };
+
   // WhatsApp Fişi
   const handleSendWhatsAppReceipt = (job: Job) => {
     const cleanPhone = job.customerPhone.replace(/[^0-9]/g, '').slice(-10);
     const dateStr = new Date().toLocaleDateString('tr-TR');
+
+    const gpsLine = job.verifiedLat 
+      ? `\n📍 Servis Lokasyonu: GPS Doğrulandı (${job.verifiedAddress || job.district} - Koordinat Onaylı)`
+      : `\n📍 Servis Lokasyonu: ${job.district}`;
 
     const msg = 
 `=============================
@@ -409,7 +488,7 @@ Sayın ${job.customerName},
 Cihaz: ${job.deviceType} (${job.brandModel})
 Yapılan İşlem: ${job.notes || job.faultDescription}
 İşçilik: ${job.laborCost} ₺ | Parça: ${job.partsCost} ₺
-Toplam Tutar: ${job.totalAmount} ₺ (${job.paymentMethod?.toUpperCase()} - Tahsil Edildi)
+Toplam Tutar: ${job.totalAmount} ₺ (${job.paymentMethod?.toUpperCase()} - Tahsil Edildi)${gpsLine}
 -----------------------------
 🛡️ GARANTİ BELGESİ:
 Değişen parçalarımız firmamız tarafından 1 YIL GARANTİLİDİR.
@@ -1007,6 +1086,13 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
                         <Text style={styles.iosLocationText}>{job.district} • {job.address}</Text>
                       </View>
 
+                      {job.verifiedLat ? (
+                        <View style={styles.iosGpsBadge}>
+                          <Ionicons name="shield-checkmark" size={12} color="#16a34a" />
+                          <Text style={styles.iosGpsBadgeText}>GPS Doğrulandı {job.arrivedTime ? `• Giriş: ${job.arrivedTime}` : ''}</Text>
+                        </View>
+                      ) : null}
+
                       <Text style={styles.iosFaultText}>{job.faultDescription}</Text>
 
                       <View style={styles.iosCardFooter}>
@@ -1255,6 +1341,15 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
                   </View>
                 </TouchableOpacity>
 
+                {activeTechJob.verifiedLat ? (
+                  <View style={styles.uberGpsBadge}>
+                    <Ionicons name="shield-checkmark" size={13} color="#16a34a" />
+                    <Text style={styles.uberGpsBadgeText}>
+                      Konum Doğrulandı ({activeTechJob.verifiedAddress || activeTechJob.district}) {activeTechJob.arrivedTime ? `• Giriş: ${activeTechJob.arrivedTime}` : ''}
+                    </Text>
+                  </View>
+                ) : null}
+
                 {/* 2'li İletişim Butonu */}
                 <View style={{ flexDirection: 'row', gap: 10, marginVertical: 14 }}>
                   <TouchableOpacity
@@ -1290,12 +1385,17 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
                 {activeTechJob.status === 'in_transit' && (
                   <TouchableOpacity
                     style={[styles.uberMainActionBtn, { backgroundColor: '#0284c7' }]}
-                    onPress={() => {
-                      setJobs(jobs.map(j => j.id === activeTechJob.id ? { ...j, status: 'in_progress' } : j));
-                    }}
+                    onPress={() => handleArriveAtCustomer(activeTechJob)}
+                    disabled={isLocating}
                   >
-                    <Ionicons name="build" size={20} color="#fff" />
-                    <Text style={styles.uberMainActionText}>Adresteyim & Başladım ➔</Text>
+                    {isLocating ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="location" size={20} color="#fff" />
+                        <Text style={styles.uberMainActionText}>Adrese Vardım & Başladım (GPS) ➔</Text>
+                      </>
+                    )}
                   </TouchableOpacity>
                 )}
 
@@ -1652,7 +1752,23 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
                   <TextInput style={styles.iosInput} placeholder="Kombi, Klima..." placeholderTextColor="#94a3b8" value={cDevice} onChangeText={setCDevice} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>İlçe</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <Text style={[styles.inputLabel, { marginBottom: 0 }]}>İlçe</Text>
+                    <TouchableOpacity
+                      onPress={handleFetchCurrentLocationForJob}
+                      style={styles.gpsFillChip}
+                      disabled={isLocating}
+                    >
+                      {isLocating ? (
+                        <ActivityIndicator size="small" color="#0284c7" />
+                      ) : (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                          <Ionicons name="navigate" size={11} color="#0284c7" />
+                          <Text style={styles.gpsFillChipText}>Konumumu Al</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  </View>
                   <TextInput style={styles.iosInput} placeholder="Kadıköy..." placeholderTextColor="#94a3b8" value={cDistrict} onChangeText={setCDistrict} />
                 </View>
               </View>
@@ -2084,6 +2200,58 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
 
 // ===================== PROFESYONEL MOBİL STİLLERİ =====================
 const styles = StyleSheet.create({
+  // GPS Styles
+  gpsFillChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f9ff',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+  },
+  gpsFillChipText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#0284c7',
+  },
+  iosGpsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#f0fdf4',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+  },
+  iosGpsBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#16a34a',
+  },
+  uberGpsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#f0fdf4',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+  },
+  uberGpsBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#16a34a',
+  },
+
   container: { flex: 1, backgroundColor: '#f8fafc' },
   scrollArea: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 110 },
 

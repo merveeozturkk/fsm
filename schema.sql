@@ -83,3 +83,9 @@ ALTER TABLE companies ADD COLUMN IF NOT EXISTS subscription_tier TEXT DEFAULT 't
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS subscription_status TEXT DEFAULT 'active';
 ALTER TABLE companies ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMP WITH TIME ZONE DEFAULT (now() + interval '14 days');
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS push_token TEXT;
+
+-- GPS Lokasyon Doğrulama Kolonları
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS verified_location_lat NUMERIC;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS verified_location_lng NUMERIC;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS verified_address TEXT;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS arrived_at TIMESTAMP WITH TIME ZONE;
