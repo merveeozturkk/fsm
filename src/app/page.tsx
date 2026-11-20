@@ -33,7 +33,7 @@ import {
   Calendar
 } from "lucide-react";
 
-export default function ServisJetApp() {
+export default function RotafixApp() {
   const [activeView, setActiveView] = useState<"patron" | "usta">("patron");
   const [jobs, setJobs] = useState<Job[]>(initialJobs);
   const [technicians, setTechnicians] = useState<Technician[]>(mockTechnicians);
@@ -221,7 +221,7 @@ export default function ServisJetApp() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-bold text-lg tracking-tight">ServisJet</h1>
+                <h1 className="font-bold text-lg tracking-tight">Rotafix</h1>
                 <span className="bg-blue-500/20 text-blue-400 text-[10px] font-semibold px-2 py-0.5 rounded-full border border-blue-500/30">
                   SAHA PRO
                 </span>
@@ -572,7 +572,7 @@ export default function ServisJetApp() {
                     Müşteriyi Ara
                   </a>
                   <a
-                    href={`https://wa.me/90${activeTechJob.customer.phone.replace(/[^0-9]/g, "").slice(-10)}?text=Merhaba%20${encodeURIComponent(activeTechJob.customer.name)},%20ServisJet%20teknisyeniniz%20yola%20çıktı,%20yaklaşık%2015%20dakika%20içinde%20adresinizde%20olacağım.`}
+                    href={`https://wa.me/90${activeTechJob.customer.phone.replace(/[^0-9]/g, "").slice(-10)}?text=Merhaba%20${encodeURIComponent(activeTechJob.customer.name)},%20Rotafix%20teknisyeniniz%20yola%20çıktı,%20yaklaşık%2015%20dakika%20içinde%20adresinizde%20olacağım.`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold text-sm shadow transition-all"

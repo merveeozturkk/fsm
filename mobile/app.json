@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "ServisJet - Teknik Servis",
-    "slug": "servisjet-mobile",
+    "name": "Rotafix - Saha Servis",
+    "slug": "rotafix",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -9,21 +9,21 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0f172a"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.servisjet.app",
+      "bundleIdentifier": "com.rotafix.app",
       "buildNumber": "1",
       "infoPlist": {
         "CFBundleAllowMixedLocalizations": true,
-        "NSCameraUsageDescription": "ServisJet, değiştirilen parça ve arıza kanıtlarını servis fişine eklemek için kameranıza erişim ister.",
-        "NSPhotoLibraryUsageDescription": "ServisJet, servis kayıtlarına galeriden cihaz ve parça fotoğrafı eklemek için fotoğraf arşivinize erişim ister.",
-        "NSLocationWhenInUseUsageDescription": "ServisJet, müşterinin adresine navigasyon ve yol tarifi başlatabilmeniz için konumunuza erişim ister."
+        "NSCameraUsageDescription": "Rotafix, değiştirilen parça ve arıza kanıtlarını servis fişine eklemek için kameranıza erişim ister.",
+        "NSPhotoLibraryUsageDescription": "Rotafix, servis kayıtlarına galeriden cihaz ve parça fotoğrafı eklemek için fotoğraf arşivinize erişim ister.",
+        "NSLocationWhenInUseUsageDescription": "Rotafix, müşteri adresine varışı doğrulamak ve yol tarifi başlatabilmeniz için konumunuza erişim ister."
       }
     },
     "android": {
-      "package": "com.servisjet.app",
+      "package": "com.rotafix.app",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -45,8 +45,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "ServisJet, servis kayıtlarına parça fotoğrafı eklemek için galerinize erişim ister.",
-          "cameraPermission": "ServisJet, arızalı ve yeni parça fotoğraflarını çekebilmeniz için kameranıza erişim ister."
+          "photosPermission": "Rotafix, servis kayıtlarına parça fotoğrafı eklemek için galerinize erişim ister.",
+          "cameraPermission": "Rotafix, arızalı ve yeni parça fotoğraflarını çekebilmeniz için kameranıza erişim ister."
         }
       ]
     ]

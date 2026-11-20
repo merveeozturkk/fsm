@@ -481,7 +481,7 @@ export default function App() {
     const msg = 
 `=============================
 🛠️ SERVİS FİŞİ & GARANTİ BELGESİ
-Firma: ${currentUser?.companyName || 'ServisJet'}
+Firma: ${currentUser?.companyName || 'Rotafix'}
 İş Kodu: ${job.jobCode} | Tarih: ${dateStr}
 -----------------------------
 Sayın ${job.customerName},
@@ -831,11 +831,9 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={styles.authScroll} showsVerticalScrollIndicator={false}>
             <View style={styles.authHeader}>
-              <View style={styles.appleLogoWrap}>
-                <Ionicons name="flame" size={32} color="#0284c7" />
-              </View>
-              <Text style={styles.appleBrand}>Servis<Text style={{ color: '#0284c7' }}>Jet</Text></Text>
-              <Text style={styles.appleSub}>Teknik Servis & Saha Yönetimi</Text>
+              <Image source={require('./assets/icon.png')} style={{ width: 76, height: 76, borderRadius: 22, marginBottom: 14 }} />
+              <Text style={styles.appleBrand}>Rota<Text style={{ color: '#0284c7' }}>fix</Text></Text>
+              <Text style={styles.appleSub}>Akıllı Saha Servis & Rota Yönetimi</Text>
             </View>
 
             <View style={styles.segmentedControl}>
@@ -1014,11 +1012,16 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
           <ScrollView contentContainerStyle={styles.scrollArea} showsVerticalScrollIndicator={false}>
             <View style={styles.appleHeaderRow}>
               <View>
-                <Text style={styles.iosLargeTitle}>İşler</Text>
-                <Text style={styles.iosSubtitle}>{currentUser.companyName} • {activeJobsCount} aktif çağrı</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.iosLargeTitle}>İşler</Text>
+                  <View style={styles.brandBadgeChip}>
+                    <Text style={styles.brandBadgeChipText}>ROTAFIX</Text>
+                  </View>
+                </View>
+                <Text style={styles.iosSubtitle}>{currentUser.companyName} • {activeJobsCount} aktif servis çağrısı</Text>
               </View>
               <TouchableOpacity style={styles.appleAddHeaderBtn} onPress={() => setIsNewJobOpen(true)}>
-                <Ionicons name="add" size={20} color="#fff" />
+                <Ionicons name="add" size={18} color="#fff" />
                 <Text style={styles.appleAddHeaderText}>Yeni İş</Text>
               </TouchableOpacity>
             </View>
@@ -1252,7 +1255,7 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
             <TouchableOpacity
               style={styles.iosShareCodeBtn}
               onPress={() => {
-                const shareMsg = `ServisJet ustalık uygulamasına katılmak için ekip davet kodumuz: ${currentUser.companyCode}`;
+                const shareMsg = `Rotafix ustalık uygulamasına katılmak için ekip davet kodumuz: ${currentUser.companyCode}`;
                 Linking.openURL(`https://wa.me/?text=${encodeURIComponent(shareMsg)}`);
               }}
             >
@@ -1634,7 +1637,7 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
             {/* Apple & KVKK Yasal Bağlantılar */}
             <TouchableOpacity
               style={styles.iosMenuItem}
-              onPress={() => Linking.openURL('https://servisjet.com/gizlilik')}
+              onPress={() => Linking.openURL('https://rotafix.app/gizlilik')}
             >
               <View style={[styles.iosMenuIconWrap, { backgroundColor: '#f1f5f9' }]}>
                 <Ionicons name="shield-checkmark-outline" size={18} color="#475569" />
@@ -1648,7 +1651,7 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
 
             <TouchableOpacity
               style={styles.iosMenuItem}
-              onPress={() => Linking.openURL('https://servisjet.com/kullanim-kosullari')}
+              onPress={() => Linking.openURL('https://rotafix.app/kullanim-kosullari')}
             >
               <View style={[styles.iosMenuIconWrap, { backgroundColor: '#f1f5f9' }]}>
                 <Ionicons name="document-text-outline" size={18} color="#475569" />
@@ -2065,7 +2068,7 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
                 <Text style={styles.iosModalTitle}>
                   {subModalStep === 'plans' ? 'Abonelik Paketleri' : subModalStep === 'checkout' ? '🔒 Güvenli Ödeme' : '🎉 Tebrikler!'}
                 </Text>
-                <Text style={styles.iosModalSub}>ServisJet Lisans Yönetimi</Text>
+                <Text style={styles.iosModalSub}>Rotafix Lisans Yönetimi</Text>
               </View>
               <TouchableOpacity onPress={() => setIsSubscriptionModalOpen(false)} style={styles.iosCloseCircle}>
                 <Ionicons name="close" size={20} color="#64748b" />
@@ -2116,7 +2119,7 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
                 {/* Apple Guideline 3.1.3 Multiplatform B2B SaaS Uyumluluğu */}
                 <TouchableOpacity
                   style={[styles.applePrimaryBtn, { backgroundColor: '#0284c7' }]}
-                  onPress={() => Linking.openURL('https://servisjet.com')}
+                  onPress={() => Linking.openURL('https://rotafix.app')}
                 >
                   <Ionicons name="globe-outline" size={18} color="#fff" />
                   <Text style={styles.applePrimaryBtnText}>🌐 Web Panelinden Kurumsal Abone Ol</Text>
@@ -2200,6 +2203,18 @@ Bizi tercih ettiğiniz için teşekkür ederiz!`;
 
 // ===================== PROFESYONEL MOBİL STİLLERİ =====================
 const styles = StyleSheet.create({
+  brandBadgeChip: {
+    backgroundColor: '#e0f2fe',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  brandBadgeChipText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#0284c7',
+    letterSpacing: 0.8,
+  },
   // GPS Styles
   gpsFillChip: {
     flexDirection: 'row',
@@ -2279,7 +2294,7 @@ const styles = StyleSheet.create({
   iosSearchInput: { flex: 1, marginLeft: 8, fontSize: 14, color: '#0f172a' },
 
   // Müşteri Kartı
-  iosCustomerCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.04, shadowRadius: 10, elevation: 2, borderWidth: 1, borderColor: '#f1f5f9' },
+  iosCustomerCard: { backgroundColor: '#fff', borderRadius: 22, padding: 18, shadowColor: '#0f172a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 12, elevation: 2, borderWidth: 1, borderColor: '#f1f5f9', marginBottom: 14 },
   iosCustTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   iosCustAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#f0f9ff', justifyContent: 'center', alignItems: 'center' },
   iosCustAvatarText: { fontSize: 18, fontWeight: '900', color: '#0284c7' },
@@ -2295,7 +2310,7 @@ const styles = StyleSheet.create({
   iosCustActionText: { fontSize: 12, fontWeight: '700', color: '#334155' },
 
   // Patron İş Kartı
-  iosJobCard: { backgroundColor: '#fff', borderRadius: 20, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.04, shadowRadius: 10, elevation: 2, borderWidth: 1, borderColor: '#f1f5f9' },
+  iosJobCard: { backgroundColor: '#fff', borderRadius: 22, padding: 18, shadowColor: '#0f172a', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 12, elevation: 2, borderWidth: 1, borderColor: '#f1f5f9', marginBottom: 14 },
   iosJobCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   deviceBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   badgeKombi: { backgroundColor: '#e0f2fe' },
@@ -2343,7 +2358,7 @@ const styles = StyleSheet.create({
   onlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#16a34a' },
   onlineBadgeText: { fontSize: 11, fontWeight: '800', color: '#16a34a' },
 
-  uberHeroCard: { backgroundColor: '#fff', borderRadius: 24, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 4, borderWidth: 1, borderColor: '#e2e8f0' },
+  uberHeroCard: { backgroundColor: '#fff', borderRadius: 24, overflow: 'hidden', shadowColor: '#0284c7', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 16, elevation: 3, borderWidth: 1, borderColor: '#e2e8f0' },
   uberStatusBanner: { backgroundColor: '#f0f9ff', paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#e0f2fe' },
   uberBannerText: { fontSize: 11, fontWeight: '900', color: '#0284c7', letterSpacing: 0.5 },
   uberJobCodeText: { fontSize: 12, fontWeight: '800', color: '#64748b' },
@@ -2420,7 +2435,7 @@ const styles = StyleSheet.create({
   iosDeleteAccountText: { color: '#94a3b8', fontSize: 12, fontWeight: '600' },
 
   // Tab Bar
-  appleTabBar: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.95)', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingVertical: 10, paddingBottom: Platform.OS === 'ios' ? 24 : 10, position: 'absolute', bottom: 0, left: 0, right: 0 },
+  appleTabBar: { flexDirection: 'row', backgroundColor: '#ffffff', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingVertical: 10, paddingBottom: Platform.OS === 'ios' ? 26 : 12, position: 'absolute', bottom: 0, left: 0, right: 0, shadowColor: '#000', shadowOffset: { width: 0, height: -3 }, shadowOpacity: 0.03, shadowRadius: 10, elevation: 8 },
   appleTabItem: { flex: 1, alignItems: 'center', gap: 3 },
   appleTabText: { fontSize: 10, fontWeight: '600', color: '#94a3b8' },
   appleTabTextActive: { color: '#0284c7', fontWeight: '800' },
@@ -2434,8 +2449,8 @@ const styles = StyleSheet.create({
   iosCloseCircle: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#f1f5f9', justifyContent: 'center', alignItems: 'center' },
 
   inputLabel: { fontSize: 12, fontWeight: '700', color: '#475569', marginBottom: 6, marginTop: 10 },
-  iosInput: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: '#0f172a' },
-  applePrimaryBtn: { backgroundColor: '#0284c7', borderRadius: 14, paddingVertical: 14, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 18 },
+  iosInput: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 13, fontSize: 14, color: '#0f172a' },
+  applePrimaryBtn: { backgroundColor: '#0284c7', borderRadius: 16, paddingVertical: 15, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 18, shadowColor: '#0284c7', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 3 },
   applePrimaryBtnText: { color: '#fff', fontSize: 14, fontWeight: '800' },
 
   iosMemoryPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#f0f9ff', borderRadius: 10, padding: 10, marginVertical: 6 },
